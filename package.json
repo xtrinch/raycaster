@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "start": "tsc -w index.ts --outDir dist/"
+  },
+  "devDependencies": {
+    "prettier": "^2.2.1",
+    "typescript": "^4.2.2"
+  }
+}
