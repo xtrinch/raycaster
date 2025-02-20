@@ -25,7 +25,7 @@ const Map = (props: {}) => {
   }
   return (
     <div className="absolute bottom-0 left-0" style={{ width: size * 4 }}>
-      <MapPerson playerPosition={playerPosition} />
+      <MapPerson playerPosition={playerPosition} size={size} />
       <MapDetail playerPosition={playerPosition} map={map} size={size} />
     </div>
   );
