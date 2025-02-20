@@ -1,4 +1,4 @@
-import { Position } from "../game";
+import { Position } from "../game/player";
 
 interface MapPersonProps {
   playerPosition: Position;

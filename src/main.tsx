@@ -14,7 +14,6 @@ const App = observer(() => {
           height="1"
           style={{ width: "100%", height: "100%" }}
         ></canvas>
-        {/* <Game /> */}
         <Map />
       </div>
     </GameContextProvider>

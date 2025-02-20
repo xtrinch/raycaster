@@ -1,17 +1,12 @@
 import { observer } from "mobx-react-lite";
 import { useContext, useEffect } from "react";
-import { Position } from "../game";
 import { GameContext } from "../state/gameContext";
 import MapDetail from "./mapDetail";
 import MapPerson from "./mapPerson";
 
-interface MapProps {
-  map: Uint8Array;
-  size: number;
-  playerPosition: Position;
-}
+interface MapProps {}
 
-const Map = (props: {}) => {
+const Map = (props: MapProps) => {
   const gameContext = useContext(GameContext);
 
   useEffect(() => {}, []);
@@ -25,7 +20,7 @@ const Map = (props: {}) => {
   }
   return (
     <div className="absolute bottom-0 left-0" style={{ width: size * 4 }}>
-      <MapPerson playerPosition={playerPosition} size={size} />
+      <MapPerson playerPosition={{ ...playerPosition }} size={size} />
       <MapDetail playerPosition={playerPosition} map={map} size={size} />
     </div>
   );

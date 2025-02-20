@@ -1,7 +1,6 @@
-// @ts-ignore
 import { makeAutoObservable } from "mobx";
 import { createContext, useEffect, useMemo } from "react";
-import { GameLoop } from "../game";
+import { GameLoop } from "../game/gameLoop";
 
 export class GameStore {
   public gameLoop: GameLoop;
