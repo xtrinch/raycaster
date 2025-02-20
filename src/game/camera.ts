@@ -33,13 +33,13 @@ export class Camera {
     makeAutoObservable(this);
   }
 
-  public render = function (player: Player, map: GridMap) {
+  render(player: Player, map: GridMap) {
     this.drawSky(player.position.direction, map.skybox, map.light);
     this.drawColumns(player, map);
     this.drawWeapon(player.weapon, player.paces);
-  };
+  }
 
-  public drawSky = function (direction: number, sky: Bitmap, ambient: number) {
+  drawSky(direction: number, sky: Bitmap, ambient: number) {
     let width = sky.width * (this.height / sky.height) * 2;
     let left = (direction / CIRCLE) * -width;
 
@@ -54,9 +54,9 @@ export class Camera {
       this.ctx.fillRect(0, this.height * 0.5, this.width, this.height * 0.5);
     }
     this.ctx.restore();
-  };
+  }
 
-  public drawColumns = function (player: Player, map: GridMap) {
+  drawColumns(player: Player, map: GridMap) {
     this.ctx.save();
     for (let column = 0; column < this.resolution; column++) {
       let x = column / this.resolution - 0.5;
@@ -69,9 +69,9 @@ export class Camera {
       this.drawColumn(column, ray, angle, map);
     }
     this.ctx.restore();
-  };
+  }
 
-  public drawWeapon = function (weapon: Bitmap, paces: number) {
+  drawWeapon(weapon: Bitmap, paces: number) {
     let bobX = Math.cos(paces * 2) * this.scale * 6;
     let bobY = Math.sin(paces * 4) * this.scale * 6;
     let left = this.width * 0.66 + bobX;
@@ -83,14 +83,9 @@ export class Camera {
       weapon.width * this.scale,
       weapon.height * this.scale
     );
-  };
+  }
 
-  public drawColumn = function (
-    column: number,
-    ray: Point[],
-    angle: number,
-    map: GridMap
-  ) {
+  drawColumn(column: number, ray: Point[], angle: number, map: GridMap) {
     let ctx = this.ctx;
     let texture = map.wallTexture;
     let left = Math.floor(column * this.spacing);
@@ -134,9 +129,9 @@ export class Camera {
       while (--rainDrops > 0)
         ctx.fillRect(left, Math.random() * rain.top, 1, rain.height);
     }
-  };
+  }
 
-  public project = (height: number, angle: number, distance: number) => {
+  project(height: number, angle: number, distance: number) {
     let z = distance * Math.cos(angle);
     let wallHeight = (this.height * height) / z;
     let bottom = (this.height / 2) * (1 + 1 / z);
@@ -144,5 +139,5 @@ export class Camera {
       top: bottom - wallHeight,
       height: wallHeight,
     };
-  };
+  }
 }

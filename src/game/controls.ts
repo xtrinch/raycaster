@@ -17,18 +17,18 @@ export class Controls {
   };
 
   constructor() {
-    document.addEventListener("keydown", this.onKey, false);
-    document.addEventListener("keyup", this.onKey, false);
+    document.addEventListener("keydown", this.onKey.bind(this), false);
+    document.addEventListener("keyup", this.onKey.bind(this), false);
 
     makeAutoObservable(this);
   }
 
-  public onKey = (e: KeyboardEvent) => {
+  onKey(e: KeyboardEvent) {
     let state: string = this.codes[e.keyCode];
     if (typeof state === "undefined") return;
     this.states[state as keyof ControlStates] =
       e.type === "keyup" ? false : true;
     e.preventDefault && e.preventDefault();
     e.stopPropagation && e.stopPropagation();
-  };
+  }
 }
