@@ -22,7 +22,7 @@ export class Camera {
     this.resolution = resolution || 320;
     this.spacing = this.width / this.resolution;
     this.range = 54;
-    this.lightRange = 8;
+    this.lightRange = 15;
     this.scale = (this.width + this.height) / 1200;
 
     makeAutoObservable(this);
@@ -259,13 +259,58 @@ export class Camera {
       let drawEndX = spriteWidth / 2 + spriteScreenX;
       if (drawEndX >= this.width) drawEndX = this.width - 1;
 
+      const alpha = (transformY + 0) / this.lightRange - map.light;
+      // ensure walls are always at least a little bit visible - alpha 1 is all black
+      this.ctx.filter = `brightness(${Math.min(
+        Math.max(0, Math.floor(100 - alpha * 100), 25)
+      )}%)`;
       // loop through every vertical stripe of the sprite on screen
-      for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
-        let texX = Math.floor(
-          ((stripe - (-spriteWidth / 2 + spriteScreenX)) * treeTexture.width) /
-            spriteWidth
-        );
+      // for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
+      //   let texX = Math.floor(
+      //     ((stripe - (-spriteWidth / 2 + spriteScreenX)) * treeTexture.width) /
+      //       spriteWidth
+      //   );
 
+      //   // the conditions in the if are:
+      //   //1) it's in front of camera plane so you don't see things behind you
+      //   //2) it's on the screen (left)
+      //   //3) it's on the screen (right)
+      //   //4) ZBuffer, with perpendicular distance
+      //   if (
+      //     transformY > 0 &&
+      //     stripe >= 0 &&
+      //     stripe <= this.width &&
+      //     transformY < ZBuffer[Math.floor(stripe / this.spacing)]
+      //   ) {
+      //     let dx = Math.floor(stripe);
+
+      //     this.ctx.drawImage(
+      //       treeTexture.image,
+      //       texX, // sx
+      //       0, // sy
+      //       1, // sw
+      //       treeTexture.height, // sh
+      //       dx, // dx
+      //       fullDrawStartY, // dy
+      //       width, // dw
+      //       fullDrawEndY - fullDrawStartY // dh
+      //     );
+      //     // this is the shading of the texture - a sort of black overlay
+      //     // this.ctx.globalAlpha = Math.min(alpha, 0.75);
+      //     // this.ctx.fillStyle = `#000000`;
+      //     // this.ctx.globalCompositeOperation = "multiply";
+      //     // this.ctx.fillRect(
+      //     //   dx,
+      //     //   fullDrawStartY,
+      //     //   width,
+      //     //   fullDrawEndY - fullDrawStartY
+      //     // );
+      //     // this.ctx.globalAlpha = 1;
+      //   }
+      // }
+
+      let stripeParts: number[] = [];
+      for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
         // the conditions in the if are:
         //1) it's in front of camera plane so you don't see things behind you
         //2) it's on the screen (left)
@@ -276,20 +321,51 @@ export class Camera {
           stripe >= 0 &&
           stripe <= this.width &&
           transformY < ZBuffer[Math.floor(stripe / this.spacing)]
-        )
-          this.ctx.drawImage(
-            treeTexture.image,
-            texX, // sx
-            0, // sy
-            1, // sw
-            treeTexture.height, // sh
-            stripe, // dx
-            fullDrawStartY, // dy
-            width, // dw
-            fullDrawEndY - fullDrawStartY // dh
-          );
+        ) {
+          if (stripeParts.length % 2 === 0) {
+            // no x yet
+            let dx = Math.floor(stripe);
+            stripeParts.push(dx);
+          }
+          // handle last frame
+          if (
+            stripe + this.spacing >= drawEndX &&
+            stripeParts.length % 2 === 1
+          ) {
+            stripeParts.push(stripe);
+          }
+        } else if (stripeParts.length % 2 === 1) {
+          // no y yet
+          stripeParts.push(stripe);
+        }
+      }
+      console.log(stripeParts);
+      for (let stripeIdx = 0; stripeIdx < stripeParts.length; stripeIdx += 2) {
+        let texX1 = Math.floor(
+          ((stripeParts[stripeIdx] - (-spriteWidth / 2 + spriteScreenX)) *
+            treeTexture.width) /
+            spriteWidth
+        );
+        let texX2 = Math.floor(
+          ((stripeParts[stripeIdx + 1] - (-spriteWidth / 2 + spriteScreenX)) *
+            treeTexture.width) /
+            spriteWidth
+        );
+
+        this.ctx.drawImage(
+          treeTexture.image,
+          texX1, // sx
+          0, // sy
+          texX2 - texX1, // sw
+          treeTexture.height, // sh
+          stripeParts[stripeIdx], // dx
+          fullDrawStartY, // dy
+          width * (stripeParts[stripeIdx + 1] - stripeParts[stripeIdx]), // dw
+          fullDrawEndY - fullDrawStartY // dh
+        );
       }
     }
+    this.ctx.filter = `brightness(100%)`;
 
     this.ctx.restore();
     return { sprites: spriteSteps };
