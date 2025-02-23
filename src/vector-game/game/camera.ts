@@ -11,22 +11,16 @@ export class Camera {
   public height: number;
   public resolution: number; // how many columns we draw
   public spacing: number;
-  public focalLength: number;
   public range: number;
   public lightRange: number;
   public scale: number;
 
-  constructor(
-    canvas: HTMLCanvasElement,
-    resolution?: number,
-    focalLength?: number
-  ) {
+  constructor(canvas: HTMLCanvasElement, resolution?: number) {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth * 0.5;
     this.height = canvas.height = window.innerHeight * 0.5;
     this.resolution = resolution || 320;
     this.spacing = this.width / this.resolution;
-    this.focalLength = focalLength || 0.8;
     this.range = 54;
     this.lightRange = 8;
     this.scale = (this.width + this.height) / 1200;
@@ -35,17 +29,16 @@ export class Camera {
   }
 
   render(player: Player, map: GridMap, spriteMap: SpriteMap) {
-    // this.drawSky(
-    //   Math.atan2(player.position.y, player.position.x),
-    //   map.skybox,
-    //   map.light
-    // );
     this.ctx.save();
     this.ctx.fillStyle = "#000000";
     this.ctx.fillRect(0, 0, this.width, this.height);
     this.ctx.restore();
+    this.drawSky(
+      Math.atan2(player.position.dirX, player.position.dirY) + Math.PI,
+      map.skybox,
+      map.light
+    );
     const { sprites } = this.drawColumns(player, map, spriteMap);
-    // this.drawSprites(player, map, sprites);
     this.drawWeapon(player.weapon, player.paces);
   }
 
@@ -67,6 +60,7 @@ export class Camera {
   // }
 
   drawSky(direction: number, sky: Bitmap, ambient: number) {
+    console.log(direction);
     let width = sky.width * (this.height / sky.height) * 2;
     let CIRCLE = Math.PI * 2;
     let left = (direction / CIRCLE) * -width;
@@ -91,7 +85,7 @@ export class Camera {
     spriteMap: SpriteMap
   ): { sprites: Point[] } {
     let ZBuffer: { [key: number]: number } = {};
-    let width = Math.ceil(this.spacing + 1);
+    let width = Math.ceil(this.spacing);
 
     // collect all the steps on the way that contained sprites
     let spriteSteps: Point[] = [];
@@ -106,7 +100,7 @@ export class Camera {
       let mapX = Math.floor(player.position.x);
       let mapY = Math.floor(player.position.y);
 
-      //length of ray from current position to next x or y-side
+      // length of ray from current position to next x or y-side
       let sideDistX: number;
       let sideDistY: number;
 
@@ -164,12 +158,12 @@ export class Camera {
         if (map.get(mapX, mapY) == 1) hit = 1;
         range -= 1;
       }
-      //Calculate distance projected on camera direction. This is the shortest distance from the polet where the wall is
-      //hit to the camera plane. Euclidean to center camera polet would give fisheye effect!
-      //This can be computed as (mapX - posX + (1 - stepX) / 2) / rayDirX for side == 0, or same formula with Y
-      //for size == 1, but can be simplified to the code below thanks to how sideDist and deltaDist are computed:
-      //because they were left scaled to |rayDir|. sideDist is the entire length of the ray above after the multiple
-      //steps, but we subtract deltaDist once because one step more into the wall was taken above.
+      // Calculate distance projected on camera direction. This is the shortest distance from the polet where the wall is
+      // hit to the camera plane. Euclidean to center camera polet would give fisheye effect!
+      // This can be computed as (mapX - posX + (1 - stepX) / 2) / rayDirX for side == 0, or same formula with Y
+      // for size == 1, but can be simplified to the code below thanks to how sideDist and deltaDist are computed:
+      // because they were left scaled to |rayDir|. sideDist is the entire length of the ray above after the multiple
+      // steps, but we subtract deltaDist once because one step more into the wall was taken above.
       if (side == 0) perpWallDist = sideDistX - deltaDistX;
       else perpWallDist = sideDistY - deltaDistY;
 
@@ -179,7 +173,7 @@ export class Camera {
       // Calculate height of line to draw on screen
       let lineHeight: number = this.height / perpWallDist;
 
-      //calculate lowest and highest pixel to fill in current stripe
+      // calculate lowest and highest pixel to fill in current stripe
       let drawStart = -lineHeight / 2 + this.height / 2;
       let fullDrawStart = drawStart;
       if (drawStart < 0) drawStart = 0;
@@ -201,16 +195,8 @@ export class Camera {
       if (side == 1 && rayDirY < 0) texX = texture.width - texX - 1;
 
       this.ctx.globalAlpha = 1;
-      // this.ctx.fillStyle = `#eeeeee`;
-      // this.ctx.fillRect(column, 0, 1, drawStart);
       if (hit) {
         this.ctx.fillStyle = `#cccccc`;
-        // this.ctx.fillRect(
-        //   column * this.spacing,
-        //   drawStart,
-        //   this.spacing + 1,
-        //   drawEnd - drawStart
-        // );
         this.ctx.drawImage(
           texture.image,
           texX, // sx
@@ -223,14 +209,6 @@ export class Camera {
           fullDrawEnd - fullDrawStart // dh
         );
       }
-      // this.ctx.fillStyle = `#eeeeee`;
-      // this.ctx.fillRect(column, drawEnd, 1, this.height - drawEnd);
-      // let ray = map.cast(
-      //   player.position,
-      //   player.position.direction + angle,
-      //   this.range
-      // );
-      // this.drawColumn(column, ray, angle, map);
     }
 
     let treeTexture = map.treeTexture;
