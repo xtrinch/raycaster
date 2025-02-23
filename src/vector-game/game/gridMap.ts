@@ -207,6 +207,6 @@ export class GridMap {
 
   public update = (seconds: number) => {
     if (this.light > 0) this.light = Math.max(this.light - 10 * seconds, 0);
-    else if (Math.random() * 5 < seconds) this.light = 2;
+    // else if (Math.random() * 5 < seconds) this.light = 2;
   };
 }

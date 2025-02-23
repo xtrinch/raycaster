@@ -61,11 +61,7 @@ export class Camera {
   }
 
   // draws columns left to right
-  drawColumns(
-    player: Player,
-    map: GridMap,
-    spriteMap: SpriteMap
-  ): { sprites: Point[] } {
+  drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
     let ZBuffer: { [key: number]: number } = {};
     let width = Math.ceil(this.spacing);
 
@@ -195,12 +191,16 @@ export class Camera {
 
         // this is the shading of the texture - a sort of black overlay
         this.ctx.fillStyle = `#000000`;
-        const alpha =
+        let alpha =
           (perpWallDist +
             // step.shading
             0) /
             this.lightRange -
           map.light;
+        if (side == 1) {
+          // give x and y sides different brightness
+          alpha = alpha * 2;
+        }
         // ensure walls are always at least a little bit visible - alpha 1 is all black
         this.ctx.globalAlpha = Math.min(alpha, 0.75);
         this.ctx.fillRect(left, fullDrawStart, width, wallHeight);
@@ -263,52 +263,9 @@ export class Camera {
       // ensure walls are always at least a little bit visible - alpha 1 is all black
       this.ctx.filter = `brightness(${Math.min(
         Math.max(0, Math.floor(100 - alpha * 100), 25)
-      )}%)`;
-      // loop through every vertical stripe of the sprite on screen
-      // for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
-      //   let texX = Math.floor(
-      //     ((stripe - (-spriteWidth / 2 + spriteScreenX)) * treeTexture.width) /
-      //       spriteWidth
-      //   );
+      )}%)`; // min 25% brightness
 
-      //   // the conditions in the if are:
-      //   //1) it's in front of camera plane so you don't see things behind you
-      //   //2) it's on the screen (left)
-      //   //3) it's on the screen (right)
-      //   //4) ZBuffer, with perpendicular distance
-      //   if (
-      //     transformY > 0 &&
-      //     stripe >= 0 &&
-      //     stripe <= this.width &&
-      //     transformY < ZBuffer[Math.floor(stripe / this.spacing)]
-      //   ) {
-      //     let dx = Math.floor(stripe);
-
-      //     this.ctx.drawImage(
-      //       treeTexture.image,
-      //       texX, // sx
-      //       0, // sy
-      //       1, // sw
-      //       treeTexture.height, // sh
-      //       dx, // dx
-      //       fullDrawStartY, // dy
-      //       width, // dw
-      //       fullDrawEndY - fullDrawStartY // dh
-      //     );
-      //     // this is the shading of the texture - a sort of black overlay
-      //     // this.ctx.globalAlpha = Math.min(alpha, 0.75);
-      //     // this.ctx.fillStyle = `#000000`;
-      //     // this.ctx.globalCompositeOperation = "multiply";
-      //     // this.ctx.fillRect(
-      //     //   dx,
-      //     //   fullDrawStartY,
-      //     //   width,
-      //     //   fullDrawEndY - fullDrawStartY
-      //     // );
-      //     // this.ctx.globalAlpha = 1;
-      //   }
-      // }
-
+      // push parts of stripe that are visible into array and draw in discrete steps (since brightness is very inefficient we cannot draw vertical stripe by vertical stripe)
       let stripeParts: number[] = [];
       for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
         // the conditions in the if are:
@@ -322,8 +279,8 @@ export class Camera {
           stripe <= this.width &&
           transformY < ZBuffer[Math.floor(stripe / this.spacing)]
         ) {
+          // no x yet
           if (stripeParts.length % 2 === 0) {
-            // no x yet
             let dx = Math.floor(stripe);
             stripeParts.push(dx);
           }
@@ -339,7 +296,6 @@ export class Camera {
           stripeParts.push(stripe);
         }
       }
-      console.log(stripeParts);
       for (let stripeIdx = 0; stripeIdx < stripeParts.length; stripeIdx += 2) {
         let texX1 = Math.floor(
           ((stripeParts[stripeIdx] - (-spriteWidth / 2 + spriteScreenX)) *
@@ -366,9 +322,7 @@ export class Camera {
       }
     }
     this.ctx.filter = `brightness(100%)`;
-
     this.ctx.restore();
-    return { sprites: spriteSteps };
   }
 
   drawWeapon(weapon: Bitmap, paces: number): void {
