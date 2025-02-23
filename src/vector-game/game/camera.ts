@@ -271,17 +271,13 @@ export class Camera {
         (this.width / 2) * (1 + transformX / transformY)
       );
 
-      //calculate height of the sprite on screen
+      // calculate height of the sprite on screen
       let spriteHeight = Math.abs(Math.floor(this.height / transformY)); //using 'transformY' instead of the real distance prevents fisheye
-      //calculate lowest and highest pixel to fill in current stripe
-      let drawStartY = -spriteHeight / 2 + this.height / 2;
-      let fullDrawStartY = drawStartY;
-      if (drawStartY < 0) drawStartY = 0;
-      let drawEndY = spriteHeight / 2 + this.height / 2;
-      let fullDrawEndY = drawEndY;
-      if (drawEndY >= this.height) drawEndY = this.height - 1;
+      // calculate lowest and highest pixel to fill in current stripe
+      let fullDrawStartY = -spriteHeight / 2 + this.height / 2;
+      let fullDrawEndY = spriteHeight / 2 + this.height / 2;
 
-      //calculate width of the sprite
+      // calculate width of the sprite
       let spriteWidth = Math.abs(Math.floor(this.height / transformY));
       let drawStartX = -spriteWidth / 2 + spriteScreenX;
       if (drawStartX < 0) drawStartX = 0;
@@ -289,14 +285,11 @@ export class Camera {
       if (drawEndX >= this.width) drawEndX = this.width - 1;
 
       // loop through every vertical stripe of the sprite on screen
-      for (let stripe = drawStartX; stripe < drawEndX; stripe++) {
-        let texX =
-          Math.floor(
-            (256 *
-              (stripe - (-spriteWidth / 2 + spriteScreenX)) *
-              treeTexture.width) /
-              spriteWidth
-          ) / 256;
+      for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
+        let texX = Math.floor(
+          ((stripe - (-spriteWidth / 2 + spriteScreenX)) * treeTexture.width) /
+            spriteWidth
+        );
 
         // the conditions in the if are:
         //1) it's in front of camera plane so you don't see things behind you
