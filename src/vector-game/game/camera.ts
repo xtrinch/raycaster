@@ -38,29 +38,11 @@ export class Camera {
       map.skybox,
       map.light
     );
-    const { sprites } = this.drawColumns(player, map, spriteMap);
+    this.drawColumns(player, map, spriteMap);
     this.drawWeapon(player.weapon, player.paces);
   }
 
-  // drawSky(direction: number, sky: Bitmap, ambient: number) {
-  //   let width = sky.width * (this.height / sky.height) * 2;
-  //   let left = (direction / CIRCLE) * -width;
-
-  //   this.ctx.save();
-  //   this.ctx.drawImage(sky.image, left, 0, width, this.height);
-  //   if (left < width - this.width) {
-  //     this.ctx.drawImage(sky.image, left + width, 0, width, this.height);
-  //   }
-  //   if (ambient > 0) {
-  //     this.ctx.fillStyle = "#ffffff";
-  //     this.ctx.globalAlpha = ambient * 0.1;
-  //     this.ctx.fillRect(0, this.height * 0.5, this.width, this.height * 0.5);
-  //   }
-  //   this.ctx.restore();
-  // }
-
   drawSky(direction: number, sky: Bitmap, ambient: number) {
-    console.log(direction);
     let width = sky.width * (this.height / sky.height) * 2;
     let CIRCLE = Math.PI * 2;
     let left = (direction / CIRCLE) * -width;
