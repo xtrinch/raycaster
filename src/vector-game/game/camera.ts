@@ -197,12 +197,14 @@ export class Camera {
             0) /
             this.lightRange -
           map.light;
+        alpha = Math.min(alpha, 0.8);
         if (side == 1) {
           // give x and y sides different brightness
           alpha = alpha * 2;
         }
+        alpha = Math.min(alpha, 0.85);
         // ensure walls are always at least a little bit visible - alpha 1 is all black
-        this.ctx.globalAlpha = Math.min(alpha, 0.75);
+        this.ctx.globalAlpha = alpha;
         this.ctx.fillRect(left, fullDrawStart, width, wallHeight);
         this.ctx.globalAlpha = 1;
       }
@@ -254,7 +256,7 @@ export class Camera {
 
       // calculate width of the sprite
       let spriteWidth = Math.abs(Math.floor(this.height / transformY));
-      let drawStartX = -spriteWidth / 2 + spriteScreenX;
+      let drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
       if (drawStartX < 0) drawStartX = 0;
       let drawEndX = spriteWidth / 2 + spriteScreenX;
       if (drawEndX >= this.width) drawEndX = this.width - 1;
@@ -262,8 +264,8 @@ export class Camera {
       const alpha = (transformY + 0) / this.lightRange - map.light;
       // ensure walls are always at least a little bit visible - alpha 1 is all black
       this.ctx.filter = `brightness(${Math.min(
-        Math.max(0, Math.floor(100 - alpha * 100), 25)
-      )}%)`; // min 25% brightness
+        Math.max(0, Math.floor(100 - alpha * 100), 20)
+      )}%)`; // min 20% brightness
 
       // push parts of stripe that are visible into array and draw in discrete steps (since brightness is very inefficient we cannot draw vertical stripe by vertical stripe)
       let stripeParts: number[] = [];
@@ -302,7 +304,7 @@ export class Camera {
             treeTexture.width) /
             spriteWidth
         );
-        let texX2 = Math.floor(
+        let texX2 = Math.ceil(
           ((stripeParts[stripeIdx + 1] - (-spriteWidth / 2 + spriteScreenX)) *
             treeTexture.width) /
             spriteWidth
