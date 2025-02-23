@@ -178,18 +178,33 @@ export class Camera {
 
       this.ctx.globalAlpha = 1;
       if (hit) {
-        this.ctx.fillStyle = `#cccccc`;
+        let left = Math.floor(column * this.spacing);
+        let wallHeight = fullDrawEnd - fullDrawStart;
+
         this.ctx.drawImage(
           texture.image,
           texX, // sx
           0, // sy
           1, // sw
           texture.height, // sh
-          column * this.spacing, // dx
+          left, // dx
           fullDrawStart, // dy - yes we go into minus here, it'll be ignored anyway
           width, // dw
-          fullDrawEnd - fullDrawStart // dh
+          wallHeight // dh
         );
+
+        // this is the shading of the texture - a sort of black overlay
+        this.ctx.fillStyle = `#000000`;
+        const alpha =
+          (perpWallDist +
+            // step.shading
+            0) /
+            this.lightRange -
+          map.light;
+        // ensure walls are always at least a little bit visible - alpha 1 is all black
+        this.ctx.globalAlpha = Math.min(alpha, 0.75);
+        this.ctx.fillRect(left, fullDrawStart, width, wallHeight);
+        this.ctx.globalAlpha = 1;
       }
     }
 
