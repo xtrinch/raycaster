@@ -1,8 +1,8 @@
 import { makeAutoObservable } from "mobx";
-import panorama from "../assets/deathvalley_panorama.jpg";
-import treeTexture1 from "../assets/trees/open.png";
-import treeTexture from "../assets/trees/pyramid.png";
-import wallTexture from "../assets/wall_texture.jpg";
+import panorama from "../../assets/deathvalley_panorama.jpg";
+import treeTexture1 from "../../assets/trees/open.png";
+import treeTexture from "../../assets/trees/pyramid.png";
+import wallTexture from "../../assets/wall_texture.jpg";
 import { Bitmap } from "./bitmap";
 import { noise2D } from "./constants";
 

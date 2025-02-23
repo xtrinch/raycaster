@@ -1,8 +1,8 @@
 import { observer } from "mobx-react";
 import { createRoot } from "react-dom/client";
-import Map from "./map/map";
-import { GameContextProvider } from "./state/gameContext";
 import "./style.css";
+import Map from "./vector-game/map/map";
+import { GameContextProvider } from "./vector-game/state/gameContext";
 
 const App = observer(() => {
   return (

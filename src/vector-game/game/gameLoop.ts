@@ -3,6 +3,7 @@ import { Camera } from "./camera";
 import { Controls } from "./controls";
 import { GridMap } from "./gridMap";
 import { Player } from "./player";
+import { SpriteMap } from "./spriteMap";
 
 export class GameLoop {
   public lastTime = 0;
@@ -11,15 +12,17 @@ export class GameLoop {
   public map: GridMap;
   public controls: Controls;
   public camera: Camera;
+  public spriteMap: SpriteMap;
 
   constructor() {
     this.map = new GridMap(32);
+    this.spriteMap = new SpriteMap();
     // this.player = new Player(15.3, -1.2, Math.PI * 0.3);
     // this.map.randomize();
     this.display = document.getElementById("display") as HTMLCanvasElement;
     this.map.generateWorld();
     this.controls = new Controls();
-    this.camera = new Camera(this.display, 320);
+    this.camera = new Camera(this.display, 620);
     this.player = this.findSpawnPoint();
     makeAutoObservable(this);
   }
@@ -38,17 +41,17 @@ export class GameLoop {
   loop(seconds: number) {
     this.map.update(seconds);
     this.player.update(this.controls.states, this.map, seconds);
-    this.camera.render(this.player, this.map);
+    this.camera.render(this.player, this.map, this.spriteMap);
   }
 
   findSpawnPoint() {
     for (let y = 0; y < this.map.size; y++) {
       for (let x = 0; x < this.map.size; x++) {
         if (this.map.get(x, y) === 0) {
-          return new Player(x + 0.5, y + 0.5, Math.PI * 0.3);
+          return new Player(x + 0.5, y + 0.5, -1, 0, 0, 0.66);
         }
       }
     }
-    return new Player(1.5, 1.5, Math.PI * 0.3);
+    return new Player(1.5, 1.5, -1, 0, 0, 0.66);
   }
 }

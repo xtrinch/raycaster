@@ -32,9 +32,9 @@ export class Player {
   public walk = (distance: number, map: GridMap) => {
     let dx = Math.cos(this.position.direction) * distance;
     let dy = Math.sin(this.position.direction) * distance;
-    if (map.get(this.position.x + dx, this.position.y) <= 0)
+    if (map.get(this.position.x + dx, this.position.y) != 1)
       this.position.x += dx;
-    if (map.get(this.position.x, this.position.y + dy) <= 0)
+    if (map.get(this.position.x, this.position.y + dy) != 1)
       this.position.y += dy;
     this.paces += distance;
   };
