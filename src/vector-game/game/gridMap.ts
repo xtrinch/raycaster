@@ -58,8 +58,8 @@ export class GridMap {
   hash(x: number, y: number) {
     return ((x * 73856093) ^ (y * 19349663)) % 100;
   }
-
   generateWorld(): void {
+    // Step 1: Generate walls using noise
     for (let y = 0; y < this.size; y++) {
       for (let x = 0; x < this.size; x++) {
         let elevation = noise2D(x * 0.1, y * 0.1);
@@ -67,7 +67,8 @@ export class GridMap {
       }
     }
 
-    // Convert filled structures into hollow ones
+    // Step 2: Identify enclosed structures and remove inner walls
+    let newGrid = new Uint8Array(this.wallGrid); // Ensure proper type
     for (let y = 1; y < this.size - 1; y++) {
       for (let x = 1; x < this.size - 1; x++) {
         if (this.wallGrid[y * this.size + x] === 1) {
@@ -78,19 +79,57 @@ export class GridMap {
             this.wallGrid[y * this.size + (x + 1)],
           ];
           if (neighbors.every((n) => n === 1)) {
-            this.wallGrid[y * this.size + x] = 0; // Make it hollow
+            newGrid[y * this.size + x] = 0; // Remove inner walls
           }
         }
       }
     }
+    this.wallGrid = newGrid;
 
-    // Add a couple of empty spaces to represent doors to each enclosed loop
-    for (let i = 0; i < 5; i++) {
-      // Adjust the number as needed
-      let ix = Math.floor(Math.random() * (this.size - 2)) + 1;
-      let iy = Math.floor(Math.random() * (this.size - 2)) + 1;
-      if (this.wallGrid[iy * this.size + ix] === 1) {
-        this.wallGrid[iy * this.size + ix] = 0; // Create a door
+    // Step 3: Add doors to horizontal and vertical lines
+    // Add doors for horizontal lines
+    for (let y = 0; y < this.size; y++) {
+      let count = 0;
+      for (let x = 0; x < this.size; x++) {
+        if (this.wallGrid[y * this.size + x] === 1) {
+          count++;
+        } else {
+          if (count >= 3) {
+            for (let i = 1; i < count; i += 2) {
+              this.wallGrid[y * this.size + (x - i)] = 0; // Add a door
+            }
+          }
+          count = 0; // Reset count for the next segment
+        }
+      }
+      // Check at the end of the line
+      if (count >= 3) {
+        for (let i = 1; i < count; i += 2) {
+          this.wallGrid[y * this.size + (this.size - 1 - i)] = 0; // Add a door at the end
+        }
+      }
+    }
+
+    // Add doors for vertical lines
+    for (let x = 0; x < this.size; x++) {
+      let count = 0;
+      for (let y = 0; y < this.size; y++) {
+        if (this.wallGrid[y * this.size + x] === 1) {
+          count++;
+        } else {
+          if (count >= 3) {
+            for (let i = 1; i < count; i += 3) {
+              this.wallGrid[(y - i) * this.size + x] = 0; // Add a door
+            }
+          }
+          count = 0; // Reset count for the next segment
+        }
+      }
+      // Check at the end of the column
+      if (count >= 3) {
+        for (let i = 1; i < count; i += 2) {
+          this.wallGrid[(this.size - 1 - i) * this.size + x] = 0; // Add a door at the end
+        }
       }
     }
   }
