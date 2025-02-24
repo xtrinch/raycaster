@@ -318,7 +318,7 @@ export class Camera {
           treeTexture.height, // sh
           stripeParts[stripeIdx], // dx
           fullDrawStartY, // dy
-          width * (stripeParts[stripeIdx + 1] - stripeParts[stripeIdx]), // dw
+          stripeParts[stripeIdx + 1] - stripeParts[stripeIdx], // dw
           fullDrawEndY - fullDrawStartY // dh
         );
       }
