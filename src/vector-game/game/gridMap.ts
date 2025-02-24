@@ -59,20 +59,38 @@ export class GridMap {
     return ((x * 73856093) ^ (y * 19349663)) % 100;
   }
 
-  // generates the walls and the trees
   generateWorld(): void {
     for (let y = 0; y < this.size; y++) {
       for (let x = 0; x < this.size; x++) {
         let elevation = noise2D(x * 0.1, y * 0.1);
         this.wallGrid[y * this.size + x] = elevation > 0.2 ? 1 : 0; // 1 = wall, 0 = empty space
+      }
+    }
 
-        // Use deterministic hash for tree placement
-        if (this.wallGrid[y * this.size + x] === 0 && this.hash(x, y) < 10) {
-          // Check if surrounding cells have a tree
-          if (!this.hasTreeNeighbor(x, y)) {
-            this.wallGrid[y * this.size + x] = 2; // Place tree
+    // Convert filled structures into hollow ones
+    for (let y = 1; y < this.size - 1; y++) {
+      for (let x = 1; x < this.size - 1; x++) {
+        if (this.wallGrid[y * this.size + x] === 1) {
+          const neighbors = [
+            this.wallGrid[(y - 1) * this.size + x],
+            this.wallGrid[(y + 1) * this.size + x],
+            this.wallGrid[y * this.size + (x - 1)],
+            this.wallGrid[y * this.size + (x + 1)],
+          ];
+          if (neighbors.every((n) => n === 1)) {
+            this.wallGrid[y * this.size + x] = 0; // Make it hollow
           }
         }
+      }
+    }
+
+    // Add a couple of empty spaces to represent doors to each enclosed loop
+    for (let i = 0; i < 5; i++) {
+      // Adjust the number as needed
+      let ix = Math.floor(Math.random() * (this.size - 2)) + 1;
+      let iy = Math.floor(Math.random() * (this.size - 2)) + 1;
+      if (this.wallGrid[iy * this.size + ix] === 1) {
+        this.wallGrid[iy * this.size + ix] = 0; // Create a door
       }
     }
   }
