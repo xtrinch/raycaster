@@ -4,7 +4,7 @@ import treeTexture1 from "../../assets/trees/open.png";
 import treeTexture from "../../assets/trees/pyramid.png";
 import wallTexture from "../../assets/wall_texture.jpg";
 import { Bitmap } from "./bitmap";
-import { noise2D } from "./constants";
+import { perlinNoise } from "./constants";
 
 export interface Point {
   x: number; // x coordinate on the grid
@@ -62,11 +62,15 @@ export class GridMap {
     // Step 1: Generate walls using noise
     for (let y = 0; y < this.size; y++) {
       for (let x = 0; x < this.size; x++) {
-        let elevation = noise2D(x * 0.1, y * 0.1);
-        this.wallGrid[y * this.size + x] = elevation > 0.2 ? 1 : 0; // 1 = wall, 0 = empty space
+        // let elevation = noise2D(x * 0.1, y * 0.1);
+        let elevation = perlinNoise.perlin2(x * 0.1, y * 0.1);
+        elevation = (elevation * 5) << 2;
+        this.wallGrid[y * this.size + x] =
+          elevation > 1 && elevation < 9 ? 1 : 0; // 1 = wall, 0 = empty space
       }
     }
 
+    return;
     // Step 2: Identify enclosed structures and remove inner walls
     let newGrid = new Uint8Array(this.wallGrid); // Ensure proper type
     for (let y = 1; y < this.size - 1; y++) {

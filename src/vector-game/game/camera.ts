@@ -1,7 +1,7 @@
 import { sortBy } from "lodash";
 import { makeAutoObservable } from "mobx";
 import { Bitmap } from "./bitmap";
-import { GridMap, Point } from "./gridMap";
+import { GridMap } from "./gridMap";
 import { Player } from "./player";
 import { SpriteMap } from "./spriteMap";
 
@@ -64,9 +64,6 @@ export class Camera {
   drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
     let ZBuffer: { [key: number]: number } = {};
     let width = Math.ceil(this.spacing);
-
-    // collect all the steps on the way that contained sprites
-    let spriteSteps: Point[] = [];
 
     this.ctx.save();
     for (let column = 0; column < this.resolution; column++) {
@@ -339,100 +336,5 @@ export class Camera {
       weapon.width * this.scale,
       weapon.height * this.scale
     );
-  }
-
-  // this draws ONE vertical column of the ray, top to bottom
-  drawColumn(
-    column: number,
-    ray: Point[], // array of intersection points with the grid along the ray's path forward
-    angle: number,
-    map: GridMap
-  ): void {
-    let ctx = this.ctx;
-    let wallTexture = map.wallTexture;
-    let treeTexture = map.treeTexture;
-    let treeTexture1 = map.treeTexture1;
-
-    let left = Math.floor(column * this.spacing);
-    let width = Math.ceil(this.spacing);
-
-    // find the polet index at which the wall starts
-    let hit = -1;
-    while (++hit < ray.length && ray[hit].type != "wall");
-
-    // traverse ray top backwards to front
-    for (let s = ray.length - 1; s >= 0; s--) {
-      let step = ray[s];
-      let rainDrops = Math.pow(Math.random(), 3) * s;
-      let rain = rainDrops > 0 && this.project(0.1, angle, step.distance);
-
-      // if we want rain, we uncomment this
-      ctx.fillStyle = "#ffffff";
-      ctx.globalAlpha = 0.03;
-      while (--rainDrops > 0)
-        ctx.fillRect(left, Math.random() * rain.top, 1, rain.height);
-
-      // if we're at the start of a wall, we'll draw the wall and its texture
-      if (s === hit) {
-        let textureX = Math.floor(wallTexture.width * step.offset);
-        let wall = this.project(step.height, angle, step.distance);
-
-        ctx.globalAlpha = 1;
-        ctx.drawImage(
-          wallTexture.image,
-          textureX,
-          0,
-          1,
-          wallTexture.height,
-          left,
-          wall.top,
-          width,
-          wall.height
-        );
-
-        // this is the shading of the texture - a sort of black overlay
-        ctx.fillStyle = `#000000`;
-        const alpha =
-          (step.distance + step.shading) / this.lightRange - map.light;
-        // ensure walls are always at least a little bit visible - alpha 1 is all black
-        ctx.globalAlpha = Math.min(alpha, 0.85);
-        ctx.fillRect(left, wall.top, width, wall.height);
-      } else if (
-        // if we're at a tree and there's no wall in front of us in FOV, we'll draw it
-        step.type === "tree" &&
-        s <= hit - 1 // make sure we're in front, not behind a wall
-      ) {
-        let textureX = Math.floor(treeTexture1.width * step.offset);
-        let tree = this.project(step.height, 0, step.distance);
-        ctx.globalAlpha = 1;
-        ctx.drawImage(
-          treeTexture1.image,
-          textureX,
-          0,
-          1,
-          treeTexture1.height,
-          left,
-          tree.top,
-          width,
-          tree.height
-        );
-      }
-    }
-  }
-
-  project(
-    height: number, // e.g. 0.8 for tree, 1 for wall, is preconfigured
-    angle: number,
-    distance: number // from the camera to the polet we're drawing
-  ) {
-    // We don't use the Euclidean distance to the polet representing player, but instead the distance
-    // to the camera plane (or, the distance of the polet projected on the camera direction to the player), to avoid the fisheye effect
-    let z = distance * Math.cos(angle); // multiply by the cosine to get rid of the fisheye effect
-    let wallHeight = (this.height * height) / z; // proportional full screen height to the distance
-    let bottom = (this.height / 2) * (1 + 1 / z);
-    return {
-      top: bottom - wallHeight,
-      height: wallHeight,
-    };
   }
 }

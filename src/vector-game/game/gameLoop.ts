@@ -48,10 +48,10 @@ export class GameLoop {
     for (let y = 0; y < this.map.size; y++) {
       for (let x = 0; x < this.map.size; x++) {
         if (this.map.get(x, y) === 0) {
-          return new Player(x + 0.5, y + 0.5, -1, 0, 0, 0.66);
+          // return new Player(x + 0.5, y + 0.5, -1, 0, 0, 0.66); // original
+          return new Player(x + 0.5, y + 0.5, -1, 0, 0, 1.2);
         }
       }
     }
-    return new Player(1.5, 1.5, -1, 0, 0, 0.66);
   }
 }
