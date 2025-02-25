@@ -1,4 +1,4 @@
-import { chunk, sortBy } from "lodash";
+import { sortBy } from "lodash";
 import { makeAutoObservable } from "mobx";
 import { Bitmap } from "./bitmap";
 import { GridMap } from "./gridMap";
@@ -22,7 +22,6 @@ export class Camera {
   public canvas: HTMLCanvasElement;
   public map: GridMap;
   public imgData: Uint8ClampedArray<ArrayBufferLike>;
-  public imgData2d: number[][];
 
   constructor(canvas: HTMLCanvasElement, map: GridMap) {
     this.ctx = canvas.getContext("2d");
@@ -65,8 +64,6 @@ export class Camera {
         floorTexture.width,
         floorTexture.height
       )?.data;
-
-      this.imgData2d = chunk(this.imgData, 4);
     };
   }
   render(player: Player, map: GridMap, spriteMap: SpriteMap) {
@@ -113,25 +110,6 @@ export class Camera {
 
     const floorTexture = map.floorTexture;
 
-    // for (let znj = 0; znj < this.width / floorTexture.width; znj++) {
-    //   const img = new ImageData(floorTexture.width, floorTexture.height); // 1 horizontal row
-    //   for (let y = 0; y < floorTexture.height; y++) {
-    //     for (let x = 0; x < floorTexture.width; x++) {
-    //       const dt1 = this.imgData[y * floorTexture.width * 4 + x * 4 + 0];
-    //       const dt2 = this.imgData[y * floorTexture.width * 4 + x * 4 + 1];
-    //       const dt3 = this.imgData[y * floorTexture.width * 4 + x * 4 + 2];
-    //       const dt4 = this.imgData[y * floorTexture.width * 4 + x * 4 + 3];
-
-    //       img.data[y * floorTexture.width * 4 + (x * 4 + 0)] = dt1;
-    //       img.data[y * floorTexture.width * 4 + (x * 4 + 1)] = dt2;
-    //       img.data[y * floorTexture.width * 4 + (x * 4 + 2)] = dt3;
-    //       img.data[y * floorTexture.width * 4 + (x * 4 + 3)] = dt4;
-    //     }
-    //   }
-    //   this.ctx.putImageData(img, znj * floorTexture.width, 64);
-    // }
-
-    // return;
     // floor casting
     const floorImg = new ImageData(this.width, this.height);
 
@@ -160,6 +138,7 @@ export class Camera {
       let floorStepY = (rowDistance * (rayDirY1 - rayDirY0)) / this.width;
       let floorStepXWithSpacing = floorStepX * flooredWidthSpacing;
       let floorStepYWithSpacing = floorStepY * flooredWidthSpacing;
+
       // real world coordinates of the leftmost column. This will be updated as we step to the right.
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
@@ -178,15 +157,12 @@ export class Camera {
 
         floorX += floorStepXWithSpacing;
         floorY += floorStepYWithSpacing;
-
-        floorImg.data[y * this.width * 4 + (x * 4 + 0)] =
-          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 0];
-        floorImg.data[y * this.width * 4 + (x * 4 + 1)] =
-          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 1];
-        floorImg.data[y * this.width * 4 + (x * 4 + 2)] =
-          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 2];
-        floorImg.data[y * this.width * 4 + (x * 4 + 3)] =
-          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 3];
+        const floorImgIdx = y * this.width * 4 + x * 4;
+        const fullImgIdx = ty * floorTexture.width * 4 + tx * 4;
+        floorImg.data[floorImgIdx] = this.imgData[fullImgIdx];
+        floorImg.data[floorImgIdx + 1] = this.imgData[fullImgIdx + 1];
+        floorImg.data[floorImgIdx + 2] = this.imgData[fullImgIdx + 2];
+        floorImg.data[floorImgIdx + 3] = this.imgData[fullImgIdx + 3];
       }
     }
     this.ctx.putImageData(floorImg, 0, 0);

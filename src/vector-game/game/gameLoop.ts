@@ -31,7 +31,7 @@ export class GameLoop {
   frame(time: number) {
     let seconds = (time - this.lastTime) / 1000;
     this.fps = Math.floor(1.0 / seconds);
-    if (seconds > 0.2) {
+    if (seconds > 0.01) {
       this.lastTime = time;
       this.loop(seconds);
     }
