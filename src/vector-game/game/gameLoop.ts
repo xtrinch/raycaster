@@ -31,7 +31,7 @@ export class GameLoop {
   frame(time: number) {
     let seconds = (time - this.lastTime) / 1000;
     this.fps = Math.floor(1.0 / seconds);
-    if (seconds > 0.01) {
+    if (seconds > 0.2) {
       this.lastTime = time;
       this.loop(seconds);
     }
@@ -49,8 +49,8 @@ export class GameLoop {
   }
 
   findSpawnPoint() {
-    for (let y = 0; y < this.map.size; y++) {
-      for (let x = 0; x < this.map.size; x++) {
+    for (let y = 4; y < this.map.size; y++) {
+      for (let x = 4; x < this.map.size; x++) {
         if (this.map.get(x, y) === 0) {
           // return new Player(x + 0.5, y + 0.5, -1, 0, 0, 0.66); // original
           return new Player(x + 0.5, y + 0.5, -1.5, 0, 0, 0.6);

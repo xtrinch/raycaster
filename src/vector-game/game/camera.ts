@@ -1,4 +1,4 @@
-import { sortBy } from "lodash";
+import { chunk, sortBy } from "lodash";
 import { makeAutoObservable } from "mobx";
 import { Bitmap } from "./bitmap";
 import { GridMap } from "./gridMap";
@@ -22,6 +22,8 @@ export class Camera {
   public canvas: HTMLCanvasElement;
   public map: GridMap;
   public imgData: Uint8ClampedArray<ArrayBufferLike>;
+  public imgData2d: number[][];
+
   constructor(canvas: HTMLCanvasElement, map: GridMap) {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth;
@@ -63,6 +65,8 @@ export class Camera {
         floorTexture.width,
         floorTexture.height
       )?.data;
+
+      this.imgData2d = chunk(this.imgData, 4);
     };
     console.log("INI?");
   }
@@ -110,26 +114,28 @@ export class Camera {
 
     const floorTexture = map.floorTexture;
 
-    for (let znj = 0; znj < this.width / floorTexture.width; znj++) {
-      const img = new ImageData(floorTexture.width, floorTexture.height); // 1 horizontal row
-      for (let y = 0; y < floorTexture.height; y++) {
-        for (let x = 0; x < floorTexture.width; x++) {
-          const dt1 = this.imgData[y * floorTexture.width * 4 + x * 4 + 0];
-          const dt2 = this.imgData[y * floorTexture.width * 4 + x * 4 + 1];
-          const dt3 = this.imgData[y * floorTexture.width * 4 + x * 4 + 2];
-          const dt4 = this.imgData[y * floorTexture.width * 4 + x * 4 + 3];
+    // for (let znj = 0; znj < this.width / floorTexture.width; znj++) {
+    //   const img = new ImageData(floorTexture.width, floorTexture.height); // 1 horizontal row
+    //   for (let y = 0; y < floorTexture.height; y++) {
+    //     for (let x = 0; x < floorTexture.width; x++) {
+    //       const dt1 = this.imgData[y * floorTexture.width * 4 + x * 4 + 0];
+    //       const dt2 = this.imgData[y * floorTexture.width * 4 + x * 4 + 1];
+    //       const dt3 = this.imgData[y * floorTexture.width * 4 + x * 4 + 2];
+    //       const dt4 = this.imgData[y * floorTexture.width * 4 + x * 4 + 3];
 
-          img.data[y * floorTexture.width * 4 + (x * 4 + 0)] = dt1;
-          img.data[y * floorTexture.width * 4 + (x * 4 + 1)] = dt2;
-          img.data[y * floorTexture.width * 4 + (x * 4 + 2)] = dt3;
-          img.data[y * floorTexture.width * 4 + (x * 4 + 3)] = dt4;
-        }
-      }
-      this.ctx.putImageData(img, znj * floorTexture.width, 64);
-    }
+    //       img.data[y * floorTexture.width * 4 + (x * 4 + 0)] = dt1;
+    //       img.data[y * floorTexture.width * 4 + (x * 4 + 1)] = dt2;
+    //       img.data[y * floorTexture.width * 4 + (x * 4 + 2)] = dt3;
+    //       img.data[y * floorTexture.width * 4 + (x * 4 + 3)] = dt4;
+    //     }
+    //   }
+    //   this.ctx.putImageData(img, znj * floorTexture.width, 64);
+    // }
 
-    return;
+    // return;
     // floor casting
+    console.log("CASTING FLOOR");
+    const floorImg = new ImageData(this.width, this.height);
 
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     let rayDirX0 = player.position.dirX - player.position.planeX;
@@ -150,8 +156,6 @@ export class Camera {
 
       // calculate the real world step vector we have to add for each x (parallel to camera plane)
       // adding step by step avoids multiplications with a weight in the inner loop
-      let floorWidthX = rowDistance * (rayDirX1 - rayDirX0);
-      let floorWidthY = rowDistance * (rayDirY1 - rayDirY0);
       let floorStepX = (rowDistance * (rayDirX1 - rayDirX0)) / this.width;
       let floorStepY = (rowDistance * (rayDirY1 - rayDirY0)) / this.width;
 
@@ -159,33 +163,6 @@ export class Camera {
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
-      // mojca
-      // // the cell coord is simply got from the integer parts of floorX and floorY
-      // let cellX = Math.floor(floorX);
-      // let cellY = Math.floor(floorY);
-
-      // // get the texture coordinate from the fractional part
-      // let tx =
-      //   Math.floor(map.floorTexture.width * (floorX - cellX)) &
-      //   (map.floorTexture.width - 1);
-      // let ty =
-      //   Math.floor(map.floorTexture.height * (floorY - cellY)) &
-      //   (map.floorTexture.height - 1);
-
-      // this.ctx.drawImage(
-      //   map.floorTexture.image,
-      //   tx, // sx
-      //   ty, // sy
-      //   1, // sw
-      //   1, // sh
-      //   0,
-      //   // x * this.widthSpacing, // dx
-      //   y * this.heightSpacing, // dy
-      //   1, // dw
-      //   1 // dh
-      // );
-
-      // end mojca
       for (let x = 0; x < this.widthResolution; ++x) {
         // the cell coord is simply got from the integer parts of floorX and floorY
         let cellX = Math.floor(floorX);
@@ -216,12 +193,22 @@ export class Camera {
         //   this.widthSpacing, // dw
         //   this.heightSpacing // dh
         // );
-        // // ceiling (symmetrical, at screenHeight - y - 1 instead of y)
-        // color = texture[ceilingTexture][texWidth * ty + tx];
-        // color = (color >> 1) & 8355711; // make a bit darker
-        // buffer[screenHeight - y - 1][x] = color;
+
+        let sx = Math.floor(tx);
+        let sy = Math.floor(ty);
+        let dx = Math.floor(x * this.widthSpacing);
+        let dy = Math.floor(y * this.heightSpacing);
+        floorImg.data[dy * this.width * 4 + (dx * 4 + 0)] =
+          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 0];
+        floorImg.data[dy * this.width * 4 + (dx * 4 + 1)] =
+          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 1];
+        floorImg.data[dy * this.width * 4 + (dx * 4 + 2)] =
+          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 2];
+        floorImg.data[dy * this.width * 4 + (dx * 4 + 3)] =
+          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 3];
       }
     }
+    this.ctx.putImageData(floorImg, 0, 0);
 
     // wall casting
     for (let column = 0; column < this.widthResolution; column++) {
