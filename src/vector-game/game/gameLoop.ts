@@ -13,24 +13,28 @@ export class GameLoop {
   public controls: Controls;
   public camera: Camera;
   public spriteMap: SpriteMap;
-
+  public fps: number;
   constructor() {
     this.map = new GridMap(32);
     this.spriteMap = new SpriteMap();
     // this.player = new Player(15.3, -1.2, Math.PI * 0.3);
     // this.map.randomize();
     this.display = document.getElementById("display") as HTMLCanvasElement;
-    this.map.generateWorld();
+    // this.map.generateWorld();
     this.controls = new Controls();
-    this.camera = new Camera(this.display, 620);
+    this.camera = new Camera(this.display, this.map);
     this.player = this.findSpawnPoint();
+    this.fps = 0;
     makeAutoObservable(this);
   }
 
   frame(time: number) {
     let seconds = (time - this.lastTime) / 1000;
-    this.lastTime = time;
-    if (seconds < 0.2) this.loop(seconds);
+    this.fps = Math.floor(1.0 / seconds);
+    if (seconds > 0.01) {
+      this.lastTime = time;
+      this.loop(seconds);
+    }
     requestAnimationFrame(this.frame.bind(this));
   }
 
@@ -49,7 +53,7 @@ export class GameLoop {
       for (let x = 0; x < this.map.size; x++) {
         if (this.map.get(x, y) === 0) {
           // return new Player(x + 0.5, y + 0.5, -1, 0, 0, 0.66); // original
-          return new Player(x + 0.5, y + 0.5, -1, 0, 0, 2.2);
+          return new Player(x + 0.5, y + 0.5, -1.5, 0, 0, 0.6);
         }
       }
     }

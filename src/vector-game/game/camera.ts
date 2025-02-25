@@ -9,25 +9,63 @@ export class Camera {
   public ctx: CanvasRenderingContext2D;
   public width: number;
   public height: number;
-  public resolution: number; // how many columns we draw
-  public spacing: number;
+  public widthResolution: number; // how many columns we draw
+  public heightResolution: number; // how many scanlines we draw
+  public widthSpacing: number;
+  public heightSpacing: number;
   public range: number;
   public lightRange: number;
   public scale: number;
-
-  constructor(canvas: HTMLCanvasElement, resolution?: number) {
+  public skipCounter: number;
+  public initialSkipCounter: number;
+  public context: CanvasRenderingContext2D;
+  public canvas: HTMLCanvasElement;
+  public map: GridMap;
+  public imgData: Uint8ClampedArray<ArrayBufferLike>;
+  constructor(canvas: HTMLCanvasElement, map: GridMap) {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth;
     this.height = canvas.height = window.innerHeight;
-    this.resolution = resolution || 320;
-    this.spacing = this.width / this.resolution;
+    // this.widthResolution = 620;
+    // this.heightResolution = 320;
+    this.widthResolution = this.width;
+    this.heightResolution = this.height;
+    this.widthSpacing = this.width / this.widthResolution;
+    this.heightSpacing = this.height / this.heightResolution;
     this.range = 54;
     this.lightRange = 15;
     this.scale = (this.width + this.height) / 1200;
-
+    this.initialSkipCounter = 1;
+    this.skipCounter = this.initialSkipCounter;
+    this.map = map;
+    this.initializeCanvas();
     makeAutoObservable(this);
   }
 
+  initializeCanvas() {
+    const floorTexture = this.map.floorTexture;
+    const img = floorTexture.image;
+    const canvas = document.getElementById("display1") as HTMLCanvasElement;
+    this.context = canvas.getContext("2d", { willReadFrequently: true });
+    canvas.width = floorTexture.width;
+    canvas.height = floorTexture.height;
+    floorTexture.image.onload = () => {
+      this.context.drawImage(
+        img,
+        0,
+        0,
+        floorTexture.width,
+        floorTexture.height
+      );
+      this.imgData = this.context.getImageData(
+        0,
+        0,
+        floorTexture.width,
+        floorTexture.height
+      )?.data;
+    };
+    console.log("INI?");
+  }
   render(player: Player, map: GridMap, spriteMap: SpriteMap) {
     this.ctx.save();
     this.ctx.fillStyle = "#000000";
@@ -60,15 +98,160 @@ export class Camera {
     this.ctx.restore();
   }
 
+  getPixel(x: number, y: number): Uint8ClampedArray<ArrayBufferLike> {
+    const resp = this.context.getImageData(
+      x || 0,
+      y || 0,
+      1,
+      1,
+      {} as ImageDataSettings
+    )?.data;
+    return resp;
+  }
+
   // draws columns left to right
   drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
+    if (!this.imgData) {
+      return;
+    }
     let ZBuffer: { [key: number]: number } = {};
-    let width = Math.ceil(this.spacing);
+    let width = Math.ceil(this.widthSpacing);
 
     this.ctx.save();
-    for (let column = 0; column < this.resolution; column++) {
+
+    const floorTexture = map.floorTexture;
+
+    for (let znj = 0; znj < this.width / floorTexture.width; znj++) {
+      const hh = 220;
+      const img = new ImageData(floorTexture.width, floorTexture.height); // 1 horizontal row
+      for (let y = 0; y < floorTexture.height; y++) {
+        // const img_data = new Uint32Array(img.data.buffer);
+
+        for (let x = 0; x < floorTexture.width; x++) {
+          // const pixelData = this.getPixel(
+          //   i % floorTexture.width,
+          //   y % floorTexture.height
+          // );
+          const dt1 = this.imgData[y * floorTexture.width * 4 + x * 4 + 0];
+          const dt2 = this.imgData[y * floorTexture.width * 4 + x * 4 + 1];
+          const dt3 = this.imgData[y * floorTexture.width * 4 + x * 4 + 2];
+          const dt4 = this.imgData[y * floorTexture.width * 4 + x * 4 + 3];
+          // img[i] = pixelData;
+          // console.log(pixelData);
+          // console.log(y * this.width + (i * 4 + 0));
+          // console.log(pixelData.length);
+          // img.data[y * this.width + (i * 4 + 0)] = pixelData[0];
+          // img.data[y * this.width + (i * 4 + 1)] = pixelData[1];
+          // img.data[y * this.width + (i * 4 + 2)] = pixelData[2];
+          // img.data[y * this.width + (i * 4 + 3)] = pixelData[3];
+          img.data[y * floorTexture.width * 4 + (x * 4 + 0)] = dt1;
+          img.data[y * floorTexture.width * 4 + (x * 4 + 1)] = dt2;
+          img.data[y * floorTexture.width * 4 + (x * 4 + 2)] = dt3;
+          img.data[y * floorTexture.width * 4 + (x * 4 + 3)] = dt4;
+        }
+      }
+      this.ctx.putImageData(img, znj * floorTexture.width, 64);
+    }
+
+    return;
+    // floor casting
+
+    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
+    let rayDirX0 = player.position.dirX - player.position.planeX;
+    let rayDirY0 = player.position.dirY - player.position.planeY;
+    let rayDirX1 = player.position.dirX + player.position.planeX;
+    let rayDirY1 = player.position.dirY + player.position.planeY;
+
+    for (let y = 0; y < this.heightResolution; y++) {
+      // Current y position compared to the center of the screen (the horizon)
+      let p = y * this.heightSpacing - this.height / 2;
+
+      // Vertical position of the camera.
+      let posZ = 0.5 * this.height;
+
+      // Horizontal distance from the camera to the floor for the current row.
+      // 0.5 is the z position exactly in the middle between floor and ceiling.
+      let rowDistance = posZ / p;
+
+      // calculate the real world step vector we have to add for each x (parallel to camera plane)
+      // adding step by step avoids multiplications with a weight in the inner loop
+      let floorWidthX = rowDistance * (rayDirX1 - rayDirX0);
+      let floorWidthY = rowDistance * (rayDirY1 - rayDirY0);
+      let floorStepX = (rowDistance * (rayDirX1 - rayDirX0)) / this.width;
+      let floorStepY = (rowDistance * (rayDirY1 - rayDirY0)) / this.width;
+
+      // real world coordinates of the leftmost column. This will be updated as we step to the right.
+      let floorX = player.position.x + rowDistance * rayDirX0;
+      let floorY = player.position.y + rowDistance * rayDirY0;
+
+      // mojca
+      // // the cell coord is simply got from the integer parts of floorX and floorY
+      // let cellX = Math.floor(floorX);
+      // let cellY = Math.floor(floorY);
+
+      // // get the texture coordinate from the fractional part
+      // let tx =
+      //   Math.floor(map.floorTexture.width * (floorX - cellX)) &
+      //   (map.floorTexture.width - 1);
+      // let ty =
+      //   Math.floor(map.floorTexture.height * (floorY - cellY)) &
+      //   (map.floorTexture.height - 1);
+
+      // this.ctx.drawImage(
+      //   map.floorTexture.image,
+      //   tx, // sx
+      //   ty, // sy
+      //   1, // sw
+      //   1, // sh
+      //   0,
+      //   // x * this.widthSpacing, // dx
+      //   y * this.heightSpacing, // dy
+      //   1, // dw
+      //   1 // dh
+      // );
+
+      // end mojca
+      for (let x = 0; x < this.widthResolution; ++x) {
+        // the cell coord is simply got from the integer parts of floorX and floorY
+        let cellX = Math.floor(floorX);
+        let cellY = Math.floor(floorY);
+        //get the texture coordinate from the fractional part
+        let tx = Math.floor(floorTexture.width * (floorX - cellX));
+        // &
+        // (map.floorTexture.width - 1);
+        let ty = Math.floor(floorTexture.height * (floorY - cellY));
+        // &
+        // (map.floorTexture.height - 1);
+
+        floorX += floorStepX;
+        floorY += floorStepY;
+        // choose texture and draw the pixel
+        // // floor
+        // color = texture[floorTexture][texWidth * ty + tx];
+        // color = (color >> 1) & 8355711; // make a bit darker
+        // buffer[y][x] = color;
+        // this.ctx.drawImage(
+        //   map.floorTexture.image,
+        //   Math.floor(tx), // sx
+        //   Math.floor(ty), // sy
+        //   this.widthSpacing, // sw
+        //   this.heightSpacing, // sh
+        //   Math.floor(x * this.widthSpacing), // dx
+        //   Math.floor(y * this.heightSpacing), // dy
+        //   this.widthSpacing, // dw
+        //   this.heightSpacing // dh
+        // );
+        // // ceiling (symmetrical, at screenHeight - y - 1 instead of y)
+        // color = texture[ceilingTexture][texWidth * ty + tx];
+        // color = (color >> 1) & 8355711; // make a bit darker
+        // buffer[screenHeight - y - 1][x] = color;
+      }
+    }
+
+    // wall casting
+    for (let column = 0; column < this.widthResolution; column++) {
       // x-coordinate in camera space scaled from -1 to 1
-      let cameraX = (2 * column) / this.resolution - 1;
+      let cameraX = (2 * column) / this.widthResolution - 1;
 
       // get the ray direction vector
       let rayDirX = player.position.dirX + player.position.planeX * cameraX;
@@ -181,7 +364,7 @@ export class Camera {
 
       this.ctx.globalAlpha = 1;
       if (hit) {
-        let left = Math.floor(column * this.spacing);
+        let left = Math.floor(column * this.widthSpacing);
         let wallHeight = drawEndY - drawStartY;
 
         this.ctx.drawImage(
@@ -276,7 +459,11 @@ export class Camera {
 
       // push parts of stripe that are visible into array and draw in discrete steps (since brightness is very inefficient we cannot draw vertical stripe by vertical stripe)
       let stripeParts: number[] = [];
-      for (let stripe = drawStartX; stripe < drawEndX; stripe += this.spacing) {
+      for (
+        let stripe = drawStartX;
+        stripe < drawEndX;
+        stripe += this.widthSpacing
+      ) {
         // the conditions in the if are:
         //1) it's in front of camera plane so you don't see things behind you
         //2) it's on the screen (left)
@@ -286,7 +473,7 @@ export class Camera {
           transformY > 0 &&
           stripe >= 0 &&
           stripe <= this.width &&
-          transformY < ZBuffer[Math.floor(stripe / this.spacing)]
+          transformY < ZBuffer[Math.floor(stripe / this.widthSpacing)]
         ) {
           // no x yet
           if (stripeParts.length % 2 === 0) {
@@ -295,7 +482,7 @@ export class Camera {
           }
           // handle last frame
           if (
-            stripe + this.spacing >= drawEndX &&
+            stripe + this.widthSpacing >= drawEndX &&
             stripeParts.length % 2 === 1
           ) {
             stripeParts.push(stripe);

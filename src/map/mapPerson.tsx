@@ -1,4 +1,4 @@
-import { Position } from "../game/player";
+import { Position } from "../vector-game/game/player";
 
 interface MapPersonProps {
   playerPosition: Position;
