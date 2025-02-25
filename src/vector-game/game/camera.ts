@@ -98,17 +98,6 @@ export class Camera {
     this.ctx.restore();
   }
 
-  getPixel(x: number, y: number): Uint8ClampedArray<ArrayBufferLike> {
-    const resp = this.context.getImageData(
-      x || 0,
-      y || 0,
-      1,
-      1,
-      {} as ImageDataSettings
-    )?.data;
-    return resp;
-  }
-
   // draws columns left to right
   drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
     if (!this.imgData) {
@@ -122,28 +111,14 @@ export class Camera {
     const floorTexture = map.floorTexture;
 
     for (let znj = 0; znj < this.width / floorTexture.width; znj++) {
-      const hh = 220;
       const img = new ImageData(floorTexture.width, floorTexture.height); // 1 horizontal row
       for (let y = 0; y < floorTexture.height; y++) {
-        // const img_data = new Uint32Array(img.data.buffer);
-
         for (let x = 0; x < floorTexture.width; x++) {
-          // const pixelData = this.getPixel(
-          //   i % floorTexture.width,
-          //   y % floorTexture.height
-          // );
           const dt1 = this.imgData[y * floorTexture.width * 4 + x * 4 + 0];
           const dt2 = this.imgData[y * floorTexture.width * 4 + x * 4 + 1];
           const dt3 = this.imgData[y * floorTexture.width * 4 + x * 4 + 2];
           const dt4 = this.imgData[y * floorTexture.width * 4 + x * 4 + 3];
-          // img[i] = pixelData;
-          // console.log(pixelData);
-          // console.log(y * this.width + (i * 4 + 0));
-          // console.log(pixelData.length);
-          // img.data[y * this.width + (i * 4 + 0)] = pixelData[0];
-          // img.data[y * this.width + (i * 4 + 1)] = pixelData[1];
-          // img.data[y * this.width + (i * 4 + 2)] = pixelData[2];
-          // img.data[y * this.width + (i * 4 + 3)] = pixelData[3];
+
           img.data[y * floorTexture.width * 4 + (x * 4 + 0)] = dt1;
           img.data[y * floorTexture.width * 4 + (x * 4 + 1)] = dt2;
           img.data[y * floorTexture.width * 4 + (x * 4 + 2)] = dt3;
