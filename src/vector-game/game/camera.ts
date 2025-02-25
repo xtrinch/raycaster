@@ -29,7 +29,7 @@ export class Camera {
     this.width = canvas.width = window.innerWidth;
     this.height = canvas.height = window.innerHeight;
     this.widthResolution = 620;
-    this.heightResolution = 320;
+    this.heightResolution = 220;
     // this.widthResolution = this.width;
     // this.heightResolution = this.height;
     this.widthSpacing = this.width / this.widthResolution;
@@ -144,7 +144,7 @@ export class Camera {
     let rayDirY1 = player.position.dirY + player.position.planeY;
 
     let halfHeight = this.height / 2;
-
+    let flooredWidthSpacing = Math.floor(this.widthSpacing);
     // Vertical position of the camera.
     let posZ = 0.5 * this.height;
 
@@ -165,7 +165,7 @@ export class Camera {
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
-      for (let x = 0; x < this.width; x += Math.floor(this.widthSpacing)) {
+      for (let x = 0; x < this.width; x += flooredWidthSpacing) {
         // the cell coord is simply got from the integer parts of floorX and floorY
         let cellX = Math.floor(floorX);
         let cellY = Math.floor(floorY);
@@ -177,8 +177,8 @@ export class Camera {
         // &
         // (map.floorTexture.height - 1);
 
-        floorX += floorStepX;
-        floorY += floorStepY;
+        floorX += floorStepX * flooredWidthSpacing;
+        floorY += floorStepY * flooredWidthSpacing;
 
         let dx = Math.floor(x);
         let dy = Math.floor(y);
