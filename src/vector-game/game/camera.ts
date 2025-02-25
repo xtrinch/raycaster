@@ -28,7 +28,7 @@ export class Camera {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth;
     this.height = canvas.height = window.innerHeight;
-    this.widthResolution = 620;
+    this.widthResolution = 420;
     this.heightResolution = 220;
     // this.widthResolution = this.width;
     // this.heightResolution = this.height;
@@ -68,7 +68,6 @@ export class Camera {
 
       this.imgData2d = chunk(this.imgData, 4);
     };
-    console.log("INI?");
   }
   render(player: Player, map: GridMap, spriteMap: SpriteMap) {
     this.ctx.save();
@@ -134,7 +133,6 @@ export class Camera {
 
     // return;
     // floor casting
-    console.log("CASTING FLOOR");
     const floorImg = new ImageData(this.width, this.height);
 
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
