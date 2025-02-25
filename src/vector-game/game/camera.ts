@@ -28,10 +28,10 @@ export class Camera {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth;
     this.height = canvas.height = window.innerHeight;
-    // this.widthResolution = 620;
-    // this.heightResolution = 320;
-    this.widthResolution = this.width;
-    this.heightResolution = this.height;
+    this.widthResolution = 620;
+    this.heightResolution = 320;
+    // this.widthResolution = this.width;
+    // this.heightResolution = this.height;
     this.widthSpacing = this.width / this.widthResolution;
     this.heightSpacing = this.height / this.heightResolution;
     this.range = 54;
@@ -143,12 +143,14 @@ export class Camera {
     let rayDirX1 = player.position.dirX + player.position.planeX;
     let rayDirY1 = player.position.dirY + player.position.planeY;
 
-    for (let y = 0; y < this.heightResolution; y++) {
-      // Current y position compared to the center of the screen (the horizon)
-      let p = y * this.heightSpacing - this.height / 2;
+    let halfHeight = this.height / 2;
 
-      // Vertical position of the camera.
-      let posZ = 0.5 * this.height;
+    // Vertical position of the camera.
+    let posZ = 0.5 * this.height;
+
+    for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
+      // Current y position compared to the center of the screen (the horizon)
+      let p = y - halfHeight;
 
       // Horizontal distance from the camera to the floor for the current row.
       // 0.5 is the z position exactly in the middle between floor and ceiling.
@@ -163,11 +165,11 @@ export class Camera {
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
-      for (let x = 0; x < this.widthResolution; ++x) {
+      for (let x = 0; x < this.width; x += Math.floor(this.widthSpacing)) {
         // the cell coord is simply got from the integer parts of floorX and floorY
         let cellX = Math.floor(floorX);
         let cellY = Math.floor(floorY);
-        //get the texture coordinate from the fractional part
+        // get the texture coordinate from the fractional part
         let tx = Math.floor(floorTexture.width * (floorX - cellX));
         // &
         // (map.floorTexture.width - 1);
@@ -177,35 +179,17 @@ export class Camera {
 
         floorX += floorStepX;
         floorY += floorStepY;
-        // choose texture and draw the pixel
-        // // floor
-        // color = texture[floorTexture][texWidth * ty + tx];
-        // color = (color >> 1) & 8355711; // make a bit darker
-        // buffer[y][x] = color;
-        // this.ctx.drawImage(
-        //   map.floorTexture.image,
-        //   Math.floor(tx), // sx
-        //   Math.floor(ty), // sy
-        //   this.widthSpacing, // sw
-        //   this.heightSpacing, // sh
-        //   Math.floor(x * this.widthSpacing), // dx
-        //   Math.floor(y * this.heightSpacing), // dy
-        //   this.widthSpacing, // dw
-        //   this.heightSpacing // dh
-        // );
 
-        let sx = Math.floor(tx);
-        let sy = Math.floor(ty);
-        let dx = Math.floor(x * this.widthSpacing);
-        let dy = Math.floor(y * this.heightSpacing);
+        let dx = Math.floor(x);
+        let dy = Math.floor(y);
         floorImg.data[dy * this.width * 4 + (dx * 4 + 0)] =
-          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 0];
+          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 0];
         floorImg.data[dy * this.width * 4 + (dx * 4 + 1)] =
-          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 1];
+          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 1];
         floorImg.data[dy * this.width * 4 + (dx * 4 + 2)] =
-          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 2];
+          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 2];
         floorImg.data[dy * this.width * 4 + (dx * 4 + 3)] =
-          this.imgData[sy * floorTexture.width * 4 + sx * 4 + 3];
+          this.imgData[ty * floorTexture.width * 4 + tx * 4 + 3];
       }
     }
     this.ctx.putImageData(floorImg, 0, 0);
