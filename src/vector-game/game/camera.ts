@@ -160,7 +160,8 @@ export class Camera {
       // adding step by step avoids multiplications with a weight in the inner loop
       let floorStepX = (rowDistance * (rayDirX1 - rayDirX0)) / this.width;
       let floorStepY = (rowDistance * (rayDirY1 - rayDirY0)) / this.width;
-
+      let floorStepXWithSpacing = floorStepX * flooredWidthSpacing;
+      let floorStepYWithSpacing = floorStepY * flooredWidthSpacing;
       // real world coordinates of the leftmost column. This will be updated as we step to the right.
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
@@ -177,18 +178,16 @@ export class Camera {
         // &
         // (map.floorTexture.height - 1);
 
-        floorX += floorStepX * flooredWidthSpacing;
-        floorY += floorStepY * flooredWidthSpacing;
+        floorX += floorStepXWithSpacing;
+        floorY += floorStepYWithSpacing;
 
-        let dx = Math.floor(x);
-        let dy = Math.floor(y);
-        floorImg.data[dy * this.width * 4 + (dx * 4 + 0)] =
+        floorImg.data[y * this.width * 4 + (x * 4 + 0)] =
           this.imgData[ty * floorTexture.width * 4 + tx * 4 + 0];
-        floorImg.data[dy * this.width * 4 + (dx * 4 + 1)] =
+        floorImg.data[y * this.width * 4 + (x * 4 + 1)] =
           this.imgData[ty * floorTexture.width * 4 + tx * 4 + 1];
-        floorImg.data[dy * this.width * 4 + (dx * 4 + 2)] =
+        floorImg.data[y * this.width * 4 + (x * 4 + 2)] =
           this.imgData[ty * floorTexture.width * 4 + tx * 4 + 2];
-        floorImg.data[dy * this.width * 4 + (dx * 4 + 3)] =
+        floorImg.data[y * this.width * 4 + (x * 4 + 3)] =
           this.imgData[ty * floorTexture.width * 4 + tx * 4 + 3];
       }
     }
