@@ -157,12 +157,15 @@ export class Camera {
 
         floorX += floorStepXWithSpacing;
         floorY += floorStepYWithSpacing;
-        const floorImgIdx = y * this.width * 4 + x * 4;
+
         const fullImgIdx = ty * floorTexture.width * 4 + tx * 4;
-        floorImg.data[floorImgIdx] = this.imgData[fullImgIdx];
-        floorImg.data[floorImgIdx + 1] = this.imgData[fullImgIdx + 1];
-        floorImg.data[floorImgIdx + 2] = this.imgData[fullImgIdx + 2];
-        floorImg.data[floorImgIdx + 3] = this.imgData[fullImgIdx + 3];
+        for (let i = 0; i < flooredWidthSpacing; i++) {
+          const floorImgIdx = y * this.width * 4 + (x + i) * 4;
+          floorImg.data[floorImgIdx] = this.imgData[fullImgIdx];
+          floorImg.data[floorImgIdx + 1] = this.imgData[fullImgIdx + 1];
+          floorImg.data[floorImgIdx + 2] = this.imgData[fullImgIdx + 2];
+          floorImg.data[floorImgIdx + 3] = this.imgData[fullImgIdx + 3];
+        }
       }
     }
     this.ctx.putImageData(floorImg, 0, 0);
