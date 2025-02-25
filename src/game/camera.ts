@@ -26,7 +26,7 @@ export class Camera {
     this.resolution = resolution;
     console.log(this.width);
     this.spacing = this.width / resolution;
-    this.focalLength = focalLength || 0.8;
+    this.focalLength = focalLength || 0.2;
     this.range = 14;
     this.lightRange = 8;
     this.scale = (this.width + this.height) / 1200;

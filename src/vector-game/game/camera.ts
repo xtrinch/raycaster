@@ -17,8 +17,8 @@ export class Camera {
 
   constructor(canvas: HTMLCanvasElement, resolution?: number) {
     this.ctx = canvas.getContext("2d");
-    this.width = canvas.width = window.innerWidth * 0.5;
-    this.height = canvas.height = window.innerHeight * 0.5;
+    this.width = canvas.width = window.innerWidth;
+    this.height = canvas.height = window.innerHeight;
     this.resolution = resolution || 320;
     this.spacing = this.width / this.resolution;
     this.range = 54;
@@ -67,10 +67,13 @@ export class Camera {
 
     this.ctx.save();
     for (let column = 0; column < this.resolution; column++) {
+      // x-coordinate in camera space scaled from -1 to 1
       let cameraX = (2 * column) / this.resolution - 1;
 
+      // get the ray direction vector
       let rayDirX = player.position.dirX + player.position.planeX * cameraX;
       let rayDirY = player.position.dirY + player.position.planeY * cameraX;
+
       // which box of the map we're in
       let mapX = Math.floor(player.position.x);
       let mapY = Math.floor(player.position.y);
@@ -88,19 +91,24 @@ export class Camera {
       //unlike (dirX, dirY) is not 1, however this does not matter, only the
       //ratio between deltaDistX and deltaDistY matters, due to the way the DDA
       //stepping further below works. So the values can be computed as below.
-      // Division through zero is prevented, even though technically that's not
-      // needed in C++ with IEEE 754 floating polet values.
-      let deltaDistX = rayDirX == 0 ? 1e30 : Math.abs(1 / rayDirX);
-      let deltaDistY = rayDirY == 0 ? 1e30 : Math.abs(1 / rayDirY);
+      // Division through zero is prevented
+      let deltaDistX = Math.abs(1 / rayDirX);
+      let deltaDistY = Math.abs(1 / rayDirY);
+      // let deltaDistX =
+      //   rayDirX === 0 ? 1e30 : Math.sqrt(1 + rayDirY ** 2 / rayDirX ** 2);
+      // let deltaDistY =
+      //   rayDirY === 0 ? 1e30 : Math.sqrt(1 + rayDirX ** 2 / rayDirY ** 2);
 
+      // perpendicular wall distance
       let perpWallDist: number;
 
       // what direction to step in x or y-direction (either +1 or -1)
       let stepX: number;
       let stepY: number;
 
-      let hit: number = 0; //was there a wall hit?
-      let side: number; //was a NS or a EW wall hit?
+      let hit: number = 0; // was there a wall hit?
+      let side: number; // was a NS or a EW wall hit? if x then side = 0, if y then side = 1
+
       // calculate step and initial sideDist
       if (rayDirX < 0) {
         stepX = -1;
@@ -109,6 +117,7 @@ export class Camera {
         stepX = 1;
         sideDistX = (mapX + 1.0 - player.position.x) * deltaDistX;
       }
+
       if (rayDirY < 0) {
         stepY = -1;
         sideDistY = (player.position.y - mapY) * deltaDistY;
@@ -116,6 +125,7 @@ export class Camera {
         stepY = 1;
         sideDistY = (mapY + 1.0 - player.position.y) * deltaDistY;
       }
+
       // perform DDA
       let range = this.range;
       while (hit == 0 && range >= 0) {
@@ -129,18 +139,22 @@ export class Camera {
           mapY += stepY;
           side = 1;
         }
-        //Check if ray has hit a wall
+        // Check if ray has hit a wall
         if (map.get(mapX, mapY) == 1) hit = 1;
         range -= 1;
       }
-      // Calculate distance projected on camera direction. This is the shortest distance from the polet where the wall is
-      // hit to the camera plane. Euclidean to center camera polet would give fisheye effect!
+      // Calculate distance projected on camera direction. This is the shortest distance from the point where the wall is
+      // hit to the camera plane. Euclidean to center camera plane would give fisheye effect!
       // This can be computed as (mapX - posX + (1 - stepX) / 2) / rayDirX for side == 0, or same formula with Y
       // for size == 1, but can be simplified to the code below thanks to how sideDist and deltaDist are computed:
       // because they were left scaled to |rayDir|. sideDist is the entire length of the ray above after the multiple
       // steps, but we subtract deltaDist once because one step more into the wall was taken above.
       if (side == 0) perpWallDist = sideDistX - deltaDistX;
       else perpWallDist = sideDistY - deltaDistY;
+      // if (side === 0)
+      //   perpWallDist = (mapX - player.position.x + (1 - stepX) / 2) / rayDirX;
+      // else
+      //   perpWallDist = (mapY - player.position.y + (1 - stepY) / 2) / rayDirY;
 
       // SET THE ZBUFFER FOR THE SPRITE CASTING
       ZBuffer[column] = perpWallDist; //perpendicular distance is used
@@ -149,12 +163,8 @@ export class Camera {
       let lineHeight: number = this.height / perpWallDist;
 
       // calculate lowest and highest pixel to fill in current stripe
-      let drawStart = -lineHeight / 2 + this.height / 2;
-      let fullDrawStart = drawStart;
-      if (drawStart < 0) drawStart = 0;
-      let drawEnd = lineHeight / 2 + this.height / 2;
-      let fullDrawEnd = drawEnd;
-      if (drawEnd >= this.height) drawEnd = this.height - 1;
+      let drawStartY = -lineHeight / 2 + this.height / 2;
+      let drawEndY = lineHeight / 2 + this.height / 2;
 
       let texture = map.wallTexture;
 
@@ -172,7 +182,7 @@ export class Camera {
       this.ctx.globalAlpha = 1;
       if (hit) {
         let left = Math.floor(column * this.spacing);
-        let wallHeight = fullDrawEnd - fullDrawStart;
+        let wallHeight = drawEndY - drawStartY;
 
         this.ctx.drawImage(
           texture.image,
@@ -181,7 +191,7 @@ export class Camera {
           1, // sw
           texture.height, // sh
           left, // dx
-          fullDrawStart, // dy - yes we go into minus here, it'll be ignored anyway
+          drawStartY, // dy - yes we go into minus here, it'll be ignored anyway
           width, // dw
           wallHeight // dh
         );
@@ -202,7 +212,7 @@ export class Camera {
         alpha = Math.min(alpha, 0.85);
         // ensure walls are always at least a little bit visible - alpha 1 is all black
         this.ctx.globalAlpha = alpha;
-        this.ctx.fillRect(left, fullDrawStart, width, wallHeight);
+        this.ctx.fillRect(left, drawStartY, width, wallHeight);
         this.ctx.globalAlpha = 1;
       }
     }

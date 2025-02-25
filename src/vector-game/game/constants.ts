@@ -6,4 +6,4 @@ export const CIRCLE = Math.PI * 2;
 export const SEED = "fixed-seed1";
 export const rng = seedrandom(SEED);
 export const noise2D = createNoise2D(rng);
-export const perlinNoise = new Noise(Math.random());
+export const perlinNoise = new Noise("fixed-seed1");
