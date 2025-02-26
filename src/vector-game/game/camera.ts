@@ -208,29 +208,11 @@ export class Camera {
         const floorPixels = range(flooredWidthSpacing).flatMap(() => [
           ...this.imgData.slice(fullImgIdx, fullImgIdx + 4),
         ]);
-        for (let j = 0; j < 1; j++) {
-          // for (let i = 0; i < flooredWidthSpacing; i++) {
-          const floorImgIdx = 4 * ((y + j) * this.width + x);
-          if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
-            continue;
-          }
-          floorImg.data.set(
-            floorPixels,
-
-            // [
-            //   this.imgData[fullImgIdx],
-            //   this.imgData[fullImgIdx + 1],
-            //   this.imgData[fullImgIdx + 2],
-            //   this.imgData[fullImgIdx + 3],
-            // ],
-            floorImgIdx
-          );
-          // floorImg.data[floorImgIdx] = this.imgData[fullImgIdx];
-          // floorImg.data[floorImgIdx + 1] = this.imgData[fullImgIdx + 1];
-          // floorImg.data[floorImgIdx + 2] = this.imgData[fullImgIdx + 2];
-          // floorImg.data[floorImgIdx + 3] = this.imgData[fullImgIdx + 3];
+        const floorImgIdx = 4 * (y * this.width + x);
+        if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
+          continue;
         }
-        // }
+        floorImg.data.set(floorPixels, floorImgIdx);
       }
     }
     for (let j = 0; j < this.height; j += flooredHeightSpacing) {
@@ -243,13 +225,9 @@ export class Camera {
         if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
           continue;
         }
-        floorImg.data.set(slice, 4 * (j + i) * this.width);
+        floorImg.data.set(slice, floorImgIdx);
       }
     }
-
-    // for (let j = 0; j < flooredHeightSpacing; j++) {
-    //   this.ctx.putImageData(floorImg, 0, flooredHeightSpacing - j);
-    // }
     this.ctx.putImageData(floorImg, 0, 0);
 
     // wall casting
