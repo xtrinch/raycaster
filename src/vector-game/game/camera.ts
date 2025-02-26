@@ -1,16 +1,12 @@
-import { sortBy } from "lodash";
+import { range, sortBy } from "lodash";
 import { makeAutoObservable } from "mobx";
 import { Bitmap } from "./bitmap";
 import { GridMap } from "./gridMap";
 import { Player } from "./player";
 import { SpriteMap } from "./spriteMap";
+// import Worker from "./workers/game.worker?worker";
 
-import { proxy, transfer, wrap } from "comlink";
-import { WorkerType } from "./workers/game.worker";
-import Worker from "./workers/game.worker?worker";
-
-export const gameWorker = wrap<WorkerType>(new Worker({ name: "game-worker" }));
-gameWorker.onProgress(proxy((data: any) => console.log(data)));
+// import { proxy, Remote, wrap } from "comlink";
 
 export class Camera {
   public ctx: CanvasRenderingContext2D;
@@ -29,6 +25,7 @@ export class Camera {
   public canvas: HTMLCanvasElement;
   public map: GridMap;
   public imgData: Uint8ClampedArray<ArrayBufferLike>;
+  // public workers: Remote<WorkerType>[];
 
   constructor(canvas: HTMLCanvasElement, map: GridMap) {
     this.ctx = canvas.getContext("2d");
@@ -46,6 +43,13 @@ export class Camera {
     this.initialSkipCounter = 1;
     this.skipCounter = this.initialSkipCounter;
     this.map = map;
+    // console.log("?");
+    // this.workers = range(0, this.heightResolution).map((id) => {
+    //   const gameWorker = wrap<WorkerType>(new Worker({ name: "game-worker" }));
+    //   gameWorker.onProgress(proxy((data: any) => console.log(data)));
+    //   return gameWorker;
+    // });
+    // console.log("initialized?");
     this.initializeCanvas();
     makeAutoObservable(this);
   }
@@ -119,7 +123,6 @@ export class Camera {
 
     // floor casting
     const floorImg = new ImageData(this.width, this.height);
-
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     let rayDirX0 = player.position.dirX - player.position.planeX;
     let rayDirY0 = player.position.dirY - player.position.planeY;
@@ -132,14 +135,42 @@ export class Camera {
     // Vertical position of the camera.
     let posZ = 0.5 * this.height;
 
-    for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
-      gameWorker.renderHorizontal(
-        y,
-        transfer(floorImg.data, [floorImg.data.buffer])
-      );
-    }
+    // const sliceLen = this.width * 4;
+    // const ys = range(0, this.height, Math.floor(this.heightSpacing));
+    // for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
+    //   const worker = this.workers[y / Math.floor(this.heightSpacing)];
+    //   worker?.renderHorizontal(
+    //     y,
+    //     transfer(new Uint8Array(this.width * this.height * 4), [
+    //       floorImgData.buffer.slice(
+    //         y * this.width * 4,
+    //         (y + flooredHeightSpacing) * this.width * 4
+    //       ),
+    //     ]),
+    //     sliceLen,
+    //     halfHeight,
+    //     posZ,
+    //     rayDirX0,
+    //     rayDirX1,
+    //     rayDirY0,
+    //     rayDirY1,
+    //     this.width,
+    //     floorTexture.width,
+    //     floorTexture.height,
+    //     flooredWidthSpacing,
+    //     flooredHeightSpacing,
+    //     player.position.x,
+    //     player.position.y,
+    //     transfer(new Uint8Array(this.imgData.length), [
+    //       this.imgData.buffer.slice(
+    //         y * this.width * 4,
+    //         (y + flooredHeightSpacing) * this.width * 4
+    //       ),
+    //     ])
+    //   );
+    // }
 
-    for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
+    for (let y = 0; y < this.height; y += flooredHeightSpacing) {
       // Current y position compared to the center of the screen (the horizon)
       let p = y - halfHeight;
 
@@ -174,17 +205,51 @@ export class Camera {
         floorY += floorStepYWithSpacing;
 
         const fullImgIdx = ty * floorTexture.width * 4 + tx * 4;
-        for (let j = 0; j < flooredHeightSpacing; j++) {
-          for (let i = 0; i < flooredWidthSpacing; i++) {
-            const floorImgIdx = (y + j) * this.width * 4 + (x + i) * 4;
-            floorImg.data[floorImgIdx] = this.imgData[fullImgIdx];
-            floorImg.data[floorImgIdx + 1] = this.imgData[fullImgIdx + 1];
-            floorImg.data[floorImgIdx + 2] = this.imgData[fullImgIdx + 2];
-            floorImg.data[floorImgIdx + 3] = this.imgData[fullImgIdx + 3];
+        const floorPixels = range(flooredWidthSpacing).flatMap(() => [
+          ...this.imgData.slice(fullImgIdx, fullImgIdx + 4),
+        ]);
+        for (let j = 0; j < 1; j++) {
+          // for (let i = 0; i < flooredWidthSpacing; i++) {
+          const floorImgIdx = 4 * ((y + j) * this.width + x);
+          if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
+            continue;
           }
+          floorImg.data.set(
+            floorPixels,
+
+            // [
+            //   this.imgData[fullImgIdx],
+            //   this.imgData[fullImgIdx + 1],
+            //   this.imgData[fullImgIdx + 2],
+            //   this.imgData[fullImgIdx + 3],
+            // ],
+            floorImgIdx
+          );
+          // floorImg.data[floorImgIdx] = this.imgData[fullImgIdx];
+          // floorImg.data[floorImgIdx + 1] = this.imgData[fullImgIdx + 1];
+          // floorImg.data[floorImgIdx + 2] = this.imgData[fullImgIdx + 2];
+          // floorImg.data[floorImgIdx + 3] = this.imgData[fullImgIdx + 3];
         }
+        // }
       }
     }
+    for (let j = 0; j < this.height; j += flooredHeightSpacing) {
+      const floorImgIdx = 4 * ((j + 3) * this.width);
+      if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
+        continue;
+      }
+      const slice = floorImg.data.slice(
+        4 * j * this.width,
+        4 * (j + 1) * this.width
+      );
+      floorImg.data.set(slice, 4 * (j + 1) * this.width);
+      floorImg.data.set(slice, 4 * (j + 2) * this.width);
+      floorImg.data.set(slice, 4 * (j + 3) * this.width);
+    }
+
+    // for (let j = 0; j < flooredHeightSpacing; j++) {
+    //   this.ctx.putImageData(floorImg, 0, flooredHeightSpacing - j);
+    // }
     this.ctx.putImageData(floorImg, 0, 0);
 
     // wall casting
