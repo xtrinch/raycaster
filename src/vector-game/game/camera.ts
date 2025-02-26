@@ -1,4 +1,4 @@
-import { range, sortBy } from "lodash";
+import { sortBy } from "lodash";
 import { makeAutoObservable } from "mobx";
 import { Bitmap } from "./bitmap";
 import { GridMap } from "./gridMap";
@@ -205,14 +205,33 @@ export class Camera {
         floorY += floorStepYWithSpacing;
 
         const fullImgIdx = ty * floorTexture.width * 4 + tx * 4;
-        const floorPixels = range(flooredWidthSpacing).flatMap(() => [
-          ...this.imgData.slice(fullImgIdx, fullImgIdx + 4),
-        ]);
+
+        // const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
+        // const floorPixels = range(flooredWidthSpacing).flatMap(() => [
+        //   ...slice,
+        // ]);
+
+        const sliceArray = new Uint8ClampedArray(flooredWidthSpacing * 4);
+        const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
+        // range(flooredWidthSpacing).flatMap(() => {
+        //   slice.join
+        // });
+        for (
+          let sliceIndex = 0;
+          sliceIndex < flooredWidthSpacing;
+          sliceIndex++
+        ) {
+          // console.log("NJ");
+          // console.log(sliceArray.length);
+          // console.log(flooredWidthSpacing * 4);
+          sliceArray.set(slice, sliceIndex * 4);
+        }
+
         const floorImgIdx = 4 * (y * this.width + x);
         if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
           continue;
         }
-        floorImg.data.set(floorPixels, floorImgIdx);
+        floorImg.data.set(sliceArray, floorImgIdx);
       }
     }
     for (let j = 0; j < this.height; j += flooredHeightSpacing) {
