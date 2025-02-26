@@ -25,6 +25,7 @@ export class Camera {
   public canvas: HTMLCanvasElement;
   public map: GridMap;
   public imgData: Uint8ClampedArray<ArrayBufferLike>;
+  public originalCanvas: HTMLCanvasElement;
   // public workers: Remote<WorkerType>[];
 
   constructor(canvas: HTMLCanvasElement, map: GridMap) {
@@ -43,6 +44,7 @@ export class Camera {
     this.initialSkipCounter = 1;
     this.skipCounter = this.initialSkipCounter;
     this.map = map;
+    this.originalCanvas = canvas;
     // console.log("?");
     // this.workers = range(0, this.heightResolution).map((id) => {
     //   const gameWorker = wrap<WorkerType>(new Worker({ name: "game-worker" }));
@@ -110,7 +112,7 @@ export class Camera {
   }
 
   // draws columns left to right
-  drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
+  async drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
     if (!this.imgData) {
       return;
     }
@@ -122,18 +124,12 @@ export class Camera {
     const floorTexture = map.floorTexture;
 
     // floor casting
-    const floorImg = new ImageData(this.width, this.height);
+    const floorImg = new ImageData(this.widthResolution, this.heightResolution);
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     let rayDirX0 = player.position.dirX - player.position.planeX;
     let rayDirY0 = player.position.dirY - player.position.planeY;
     let rayDirX1 = player.position.dirX + player.position.planeX;
     let rayDirY1 = player.position.dirY + player.position.planeY;
-
-    let halfHeight = this.height / 2;
-    let flooredWidthSpacing = Math.floor(this.widthSpacing);
-    let flooredHeightSpacing = Math.floor(this.heightSpacing);
-    // Vertical position of the camera.
-    let posZ = 0.5 * this.height;
 
     // const sliceLen = this.width * 4;
     // const ys = range(0, this.height, Math.floor(this.heightSpacing));
@@ -170,9 +166,16 @@ export class Camera {
     //   );
     // }
 
-    for (let y = 0; y < this.height; y += flooredHeightSpacing) {
+    for (
+      let y = this.heightResolution / 2 - 1;
+      y < this.heightResolution;
+      ++y
+    ) {
       // Current y position compared to the center of the screen (the horizon)
-      let p = y - halfHeight;
+      let p = y - this.heightResolution / 2;
+
+      // Vertical position of the camera.
+      let posZ = 0.5 * this.heightResolution;
 
       // Horizontal distance from the camera to the floor for the current row.
       // 0.5 is the z position exactly in the middle between floor and ceiling.
@@ -180,74 +183,100 @@ export class Camera {
 
       // calculate the real world step vector we have to add for each x (parallel to camera plane)
       // adding step by step avoids multiplications with a weight in the inner loop
-      let floorStepX = (rowDistance * (rayDirX1 - rayDirX0)) / this.width;
-      let floorStepY = (rowDistance * (rayDirY1 - rayDirY0)) / this.width;
-      let floorStepXWithSpacing = floorStepX * flooredWidthSpacing;
-      let floorStepYWithSpacing = floorStepY * flooredWidthSpacing;
+      let floorStepX =
+        (rowDistance * (rayDirX1 - rayDirX0)) / this.widthResolution;
+      let floorStepY =
+        (rowDistance * (rayDirY1 - rayDirY0)) / this.widthResolution;
 
       // real world coordinates of the leftmost column. This will be updated as we step to the right.
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
-      for (let x = 0; x < this.width; x += flooredWidthSpacing) {
-        // the cell coord is simply got from the integer parts of floorX and floorY
-        let cellX = Math.floor(floorX);
-        let cellY = Math.floor(floorY);
+      for (let x = 0; x < this.widthResolution; ++x) {
         // get the texture coordinate from the fractional part
-        let tx = Math.floor(floorTexture.width * (floorX - cellX));
-        // &
-        // (map.floorTexture.width - 1);
-        let ty = Math.floor(floorTexture.height * (floorY - cellY));
-        // &
-        // (map.floorTexture.height - 1);
+        let tx =
+          Math.floor(floorTexture.width * (floorX % 1)) &
+          (floorTexture.width - 1); // the cell coord is simply got from the integer parts of floorX and floorY
+        let ty =
+          Math.floor(floorTexture.height * (floorY % 1)) &
+          (floorTexture.height - 1);
 
-        floorX += floorStepXWithSpacing;
-        floorY += floorStepYWithSpacing;
+        floorX += floorStepX;
+        floorY += floorStepY;
 
-        const fullImgIdx = ty * floorTexture.width * 4 + tx * 4;
+        const fullImgIdx = 4 * (ty * floorTexture.width + tx);
 
-        // const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
-        // const floorPixels = range(flooredWidthSpacing).flatMap(() => [
-        //   ...slice,
-        // ]);
-
-        const sliceArray = new Uint8ClampedArray(flooredWidthSpacing * 4);
+        const sliceArray = new Uint8ClampedArray(4);
         const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
-        // range(flooredWidthSpacing).flatMap(() => {
-        //   slice.join
-        // });
-        for (
-          let sliceIndex = 0;
-          sliceIndex < flooredWidthSpacing;
-          sliceIndex++
-        ) {
-          // console.log("NJ");
-          // console.log(sliceArray.length);
-          // console.log(flooredWidthSpacing * 4);
-          sliceArray.set(slice, sliceIndex * 4);
-        }
 
-        const floorImgIdx = 4 * (y * this.width + x);
-        if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
-          continue;
-        }
+        sliceArray.set(slice, 0);
+
+        const floorImgIdx = 4 * (y * this.widthResolution + x);
+        const ceilingImgIdx =
+          4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
+        // if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
+        //   continue;
+        // }
+        // console.log(
+        //   `y:${y}, x:${x}, floorImgIdx:${floorImgIdx}, ceilingImgIdx:${ceilingImgIdx}, length:${floorImg.data.length}`
+        // );
+        floorImg.data.set(
+          sliceArray,
+          ceilingImgIdx
+          // Math.min(floorImg.data.length - 4, Math.max(0, ceilingImgIdx))
+        );
         floorImg.data.set(sliceArray, floorImgIdx);
       }
     }
-    for (let j = 0; j < this.height; j += flooredHeightSpacing) {
-      const slice = floorImg.data.slice(
-        4 * j * this.width,
-        4 * (j + 1) * this.width
-      );
-      for (let i = 0; i < flooredHeightSpacing; i++) {
-        const floorImgIdx = 4 * ((j + i) * this.width);
-        if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
-          continue;
-        }
-        floorImg.data.set(slice, floorImgIdx);
-      }
-    }
+
+    // fill in the gaps for height spacing, just duplicate data
+    // for (let j = 0; j < this.height; j += flooredHeightSpacing) {
+    //   const slice = floorImg.data.slice(
+    //     4 * j * this.width,
+    //     4 * (j + 1) * this.width
+    //   );
+    //   for (let i = 0; i < flooredHeightSpacing; i++) {
+    //     const floorImgIdx = 4 * ((j + i) * this.width);
+    //     if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
+    //       continue;
+    //     }
+    //     floorImg.data.set(slice, floorImgIdx);
+    //   }
+    // }
     this.ctx.putImageData(floorImg, 0, 0);
+    // this.ctx.scale(
+    //   this.width / this.widthResolution,
+    //   this.height / this.heightResolution
+    // );
+    // this.ctx.drawImage(this.originalCanvas, 0, 0); // <-- added
+    // this.ctx.scale(1, 1);
+
+    // Now we have an unscaled version of our ImageData
+    // let's make the compositing mode to 'copy' so that our next drawing op erases whatever was there previously
+    // just like putImageData would have done
+    // this.ctx.globalCompositeOperation = "copy";
+    // // now we can draw ourself over ourself.
+    // this.ctx.drawImage(
+    //   this.originalCanvas,
+    //   0,
+    //   0,
+    //   floorImg.width,
+    //   floorImg.height, // grab the ImageData part
+    //   0,
+    //   0,
+    //   this.width,
+    //   this.height // scale it
+    // );
+    // this.ctx.globalCompositeOperation = null;
+
+    var img = new ImageData(
+      new Uint8ClampedArray(floorImg.data),
+      floorImg.width,
+      floorImg.height
+    );
+
+    const renderer = await createImageBitmap(img);
+    this.ctx.drawImage(renderer, 0, 0, this.width, this.height);
 
     // wall casting
     for (let column = 0; column < this.widthResolution; column++) {

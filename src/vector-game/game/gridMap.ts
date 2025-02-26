@@ -1,6 +1,6 @@
 import { makeAutoObservable } from "mobx";
 import panorama from "../../assets/deathvalley_panorama.jpg";
-import floorTexture from "../../assets/mossy_floor.png";
+import floorTexture from "../../assets/floor3.jpeg";
 import treeTexture1 from "../../assets/trees/open.png";
 import treeTexture from "../../assets/trees/pyramid.png";
 import wallTexture from "../../assets/wall_texture.jpg";
@@ -37,7 +37,8 @@ export class GridMap {
     this.wallTexture = new Bitmap(wallTexture, 1024, 1024);
     this.treeTexture = new Bitmap(treeTexture, 452, 679);
     this.treeTexture1 = new Bitmap(treeTexture1, 452, 679);
-    this.floorTexture = new Bitmap(floorTexture, 64, 64);
+    this.floorTexture = new Bitmap(floorTexture, 253, 253);
+    this.floorTexture = new Bitmap(wallTexture, 1024, 1024);
 
     this.light = 0;
     // prettier-ignore
