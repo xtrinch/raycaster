@@ -77,7 +77,8 @@ export class Camera {
       )?.data;
     };
   }
-  render(player: Player, map: GridMap, spriteMap: SpriteMap) {
+
+  async render(player: Player, map: GridMap, spriteMap: SpriteMap) {
     this.ctx.save();
     this.ctx.fillStyle = "#000000";
     this.ctx.fillRect(0, 0, this.width, this.height);
@@ -87,7 +88,7 @@ export class Camera {
       map.skybox,
       map.light
     );
-    this.drawColumns(player, map, spriteMap);
+    await this.drawColumns(player, map, spriteMap);
     this.drawWeapon(player.weapon, player.paces);
   }
 
@@ -128,6 +129,9 @@ export class Camera {
     let rayDirY0 = player.position.dirY - player.position.planeY;
     let rayDirX1 = player.position.dirX + player.position.planeX;
     let rayDirY1 = player.position.dirY + player.position.planeY;
+
+    const rayDirXDist = rayDirX1 - rayDirX0;
+    const rayDirYDist = rayDirY1 - rayDirY0;
 
     // const sliceLen = this.width * 4;
     // const ys = range(0, this.height, Math.floor(this.heightSpacing));
@@ -182,26 +186,26 @@ export class Camera {
 
       // calculate the real world step vector we have to add for each x (parallel to camera plane)
       // adding step by step avoids multiplications with a weight in the inner loop
-      let floorStepX =
-        (rowDistance * (rayDirX1 - rayDirX0)) / this.widthResolution;
-      let floorStepY =
-        (rowDistance * (rayDirY1 - rayDirY0)) / this.widthResolution;
+      let floorStepX = (rowDistance * rayDirXDist) / this.widthResolution;
+      let floorStepY = (rowDistance * rayDirYDist) / this.widthResolution;
 
       // real world coordinates of the leftmost column. This will be updated as we step to the right.
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
       for (let x = 0; x < this.widthResolution; ++x) {
-        // get the texture coordinate from the fractional part
-        let tx =
-          Math.floor(floorTexture.width * (floorX % 1)) &
-          (floorTexture.width - 1); // the cell coord is simply got from the integer parts of floorX and floorY
-        let ty =
-          Math.floor(floorTexture.height * (floorY % 1)) &
-          (floorTexture.height - 1);
-
         floorX += floorStepX;
         floorY += floorStepY;
+
+        if (map.get(Math.floor(floorX), Math.floor(floorY)) !== 2) continue;
+        let cellX = floorX % 1; // the cell coord is simply got from the integer parts of floorX and floorY
+        let cellY = floorY % 1;
+
+        // get the texture coordinate from the fractional part
+        let tx =
+          Math.floor(floorTexture.width * cellX) & (floorTexture.width - 1);
+        let ty =
+          Math.floor(floorTexture.height * cellY) & (floorTexture.height - 1);
 
         // find pixel
         const fullImgIdx = 4 * (ty * floorTexture.width + tx);
@@ -218,8 +222,6 @@ export class Camera {
         floorImg.data.set(slice, floorImgIdx);
       }
     }
-
-    this.ctx.putImageData(floorImg, 0, 0);
 
     // scale image to canvas width/height
     var img = new ImageData(
