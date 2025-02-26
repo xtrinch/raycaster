@@ -34,8 +34,6 @@ export class Camera {
     this.height = canvas.height = window.innerHeight;
     this.widthResolution = 420;
     this.heightResolution = 220;
-    // this.widthResolution = this.width;
-    // this.heightResolution = this.height;
     this.widthSpacing = this.width / this.widthResolution;
     this.heightSpacing = this.height / this.heightResolution;
     this.range = 54;
@@ -166,6 +164,10 @@ export class Camera {
     //   );
     // }
 
+    // Vertical position of the camera.
+    let posZ = 0.5 * this.heightResolution;
+
+    // loop through the resolutions and scale later
     for (
       let y = this.heightResolution / 2 - 1;
       y < this.heightResolution;
@@ -173,9 +175,6 @@ export class Camera {
     ) {
       // Current y position compared to the center of the screen (the horizon)
       let p = y - this.heightResolution / 2;
-
-      // Vertical position of the camera.
-      let posZ = 0.5 * this.heightResolution;
 
       // Horizontal distance from the camera to the floor for the current row.
       // 0.5 is the z position exactly in the middle between floor and ceiling.
@@ -204,71 +203,25 @@ export class Camera {
         floorX += floorStepX;
         floorY += floorStepY;
 
+        // find pixel
         const fullImgIdx = 4 * (ty * floorTexture.width + tx);
-
-        const sliceArray = new Uint8ClampedArray(4);
         const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
-
-        sliceArray.set(slice, 0);
 
         const floorImgIdx = 4 * (y * this.widthResolution + x);
         const ceilingImgIdx =
           4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
-        // if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
-        //   continue;
-        // }
+
         // console.log(
         //   `y:${y}, x:${x}, floorImgIdx:${floorImgIdx}, ceilingImgIdx:${ceilingImgIdx}, length:${floorImg.data.length}`
         // );
-        floorImg.data.set(
-          sliceArray,
-          ceilingImgIdx
-          // Math.min(floorImg.data.length - 4, Math.max(0, ceilingImgIdx))
-        );
-        floorImg.data.set(sliceArray, floorImgIdx);
+        floorImg.data.set(slice, ceilingImgIdx);
+        floorImg.data.set(slice, floorImgIdx);
       }
     }
 
-    // fill in the gaps for height spacing, just duplicate data
-    // for (let j = 0; j < this.height; j += flooredHeightSpacing) {
-    //   const slice = floorImg.data.slice(
-    //     4 * j * this.width,
-    //     4 * (j + 1) * this.width
-    //   );
-    //   for (let i = 0; i < flooredHeightSpacing; i++) {
-    //     const floorImgIdx = 4 * ((j + i) * this.width);
-    //     if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
-    //       continue;
-    //     }
-    //     floorImg.data.set(slice, floorImgIdx);
-    //   }
-    // }
     this.ctx.putImageData(floorImg, 0, 0);
-    // this.ctx.scale(
-    //   this.width / this.widthResolution,
-    //   this.height / this.heightResolution
-    // );
-    // this.ctx.drawImage(this.originalCanvas, 0, 0); // <-- added
-    // this.ctx.scale(1, 1);
 
-    // Now we have an unscaled version of our ImageData
-    // let's make the compositing mode to 'copy' so that our next drawing op erases whatever was there previously
-    // just like putImageData would have done
-    // this.ctx.globalCompositeOperation = "copy";
-    // // now we can draw ourself over ourself.
-    // this.ctx.drawImage(
-    //   this.originalCanvas,
-    //   0,
-    //   0,
-    //   floorImg.width,
-    //   floorImg.height, // grab the ImageData part
-    //   0,
-    //   0,
-    //   this.width,
-    //   this.height // scale it
-    // );
-    // this.ctx.globalCompositeOperation = null;
-
+    // scale image to canvas width/height
     var img = new ImageData(
       new Uint8ClampedArray(floorImg.data),
       floorImg.width,
