@@ -234,17 +234,17 @@ export class Camera {
       }
     }
     for (let j = 0; j < this.height; j += flooredHeightSpacing) {
-      const floorImgIdx = 4 * ((j + 3) * this.width);
-      if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
-        continue;
-      }
       const slice = floorImg.data.slice(
         4 * j * this.width,
         4 * (j + 1) * this.width
       );
-      floorImg.data.set(slice, 4 * (j + 1) * this.width);
-      floorImg.data.set(slice, 4 * (j + 2) * this.width);
-      floorImg.data.set(slice, 4 * (j + 3) * this.width);
+      for (let i = 0; i < flooredHeightSpacing; i++) {
+        const floorImgIdx = 4 * ((j + i) * this.width);
+        if (floorImgIdx + flooredWidthSpacing * 4 >= floorImg.data.length) {
+          continue;
+        }
+        floorImg.data.set(slice, 4 * (j + i) * this.width);
+      }
     }
 
     // for (let j = 0; j < flooredHeightSpacing; j++) {
