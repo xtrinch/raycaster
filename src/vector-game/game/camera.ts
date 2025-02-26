@@ -5,6 +5,13 @@ import { GridMap } from "./gridMap";
 import { Player } from "./player";
 import { SpriteMap } from "./spriteMap";
 
+import { proxy, transfer, wrap } from "comlink";
+import { WorkerType } from "./workers/game.worker";
+import Worker from "./workers/game.worker?worker";
+
+export const gameWorker = wrap<WorkerType>(new Worker({ name: "game-worker" }));
+gameWorker.onProgress(proxy((data: any) => console.log(data)));
+
 export class Camera {
   public ctx: CanvasRenderingContext2D;
   public width: number;
@@ -124,6 +131,13 @@ export class Camera {
     let flooredHeightSpacing = Math.floor(this.heightSpacing);
     // Vertical position of the camera.
     let posZ = 0.5 * this.height;
+
+    for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
+      gameWorker.renderHorizontal(
+        y,
+        transfer(floorImg.data, [floorImg.data.buffer])
+      );
+    }
 
     for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
       // Current y position compared to the center of the screen (the horizon)
