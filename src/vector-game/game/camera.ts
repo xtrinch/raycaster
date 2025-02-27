@@ -207,6 +207,7 @@ export class Camera {
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
+      const rowAlpha = (1 - alpha) * 255;
       for (let x = 0; x < this.widthResolution; ++x) {
         floorX += floorStepX;
         floorY += floorStepY;
@@ -223,7 +224,7 @@ export class Camera {
         const fullImgIdx = 4 * (ty * floorTexture.width + tx);
         const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
 
-        slice[3] = (1 - alpha) * 255;
+        slice[3] = rowAlpha;
         const floorImgIdx = 4 * (y * this.widthResolution + x);
         const ceilingImgIdx =
           4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
