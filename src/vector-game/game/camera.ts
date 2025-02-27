@@ -32,8 +32,8 @@ export class Camera {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth;
     this.height = canvas.height = window.innerHeight;
-    this.widthResolution = 620;
-    this.heightResolution = 420;
+    this.widthResolution = 420;
+    this.heightResolution = 320;
     this.widthSpacing = this.width / this.widthResolution;
     this.heightSpacing = this.height / this.heightResolution;
     this.range = 54;
@@ -123,11 +123,12 @@ export class Camera {
     const floorTexture = map.floorTexture;
 
     // floor casting
-    const floorImg = new ImageData(this.widthResolution, this.heightResolution);
+    const floorImg = new Uint8ClampedArray(
+      this.widthResolution * this.heightResolution * 4
+    );
     // black pixels for floor so we can use alpha channel in the actual floor
-    const floorImgBlackPixels = new ImageData(
-      this.widthResolution,
-      this.heightResolution
+    const floorImgBlackPixels = new Uint8ClampedArray(
+      this.widthResolution * this.heightResolution * 4
     );
 
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
@@ -232,18 +233,19 @@ export class Camera {
         // console.log(
         //   `y:${y}, x:${x}, floorImgIdx:${floorImgIdx}, ceilingImgIdx:${ceilingImgIdx}, length:${floorImg.data.length}`
         // );
-        floorImg.data.set(slice, ceilingImgIdx);
-        floorImg.data.set(slice, floorImgIdx);
-        floorImgBlackPixels.data.set([0, 0, 0, 255], ceilingImgIdx);
-        floorImgBlackPixels.data.set([0, 0, 0, 255], floorImgIdx);
+
+        floorImg.set(slice, ceilingImgIdx);
+        floorImg.set(slice, floorImgIdx);
+        floorImgBlackPixels.set([0, 0, 0, 255], ceilingImgIdx);
+        floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
       }
     }
 
     // scale image to canvas width/height
     var img0 = new ImageData(
-      new Uint8ClampedArray(floorImgBlackPixels.data),
-      floorImgBlackPixels.width,
-      floorImgBlackPixels.height
+      floorImgBlackPixels,
+      this.widthResolution,
+      this.heightResolution
     );
 
     const renderer0 = await createImageBitmap(img0);
@@ -251,9 +253,9 @@ export class Camera {
 
     // scale image to canvas width/height
     var img = new ImageData(
-      new Uint8ClampedArray(floorImg.data),
-      floorImg.width,
-      floorImg.height
+      floorImg,
+      this.widthResolution,
+      this.heightResolution
     );
 
     const renderer = await createImageBitmap(img);
