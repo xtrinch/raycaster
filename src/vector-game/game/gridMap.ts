@@ -89,7 +89,6 @@ export class GridMap {
   public get = (x: number, y: number): number => {
     x = Math.floor(x);
     y = Math.floor(y);
-    if (x < 0 || x > this.size - 1 || y < 0 || y > this.size - 1) return -1;
     return this.wallGrid[y * this.size + x];
   };
 

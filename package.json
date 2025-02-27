@@ -23,6 +23,7 @@
     "react-dom": "^19.0.0",
     "seedrandom": "^3.0.5",
     "simplex-noise": "^4.0.3",
+    "structurae": "^4.0.2",
     "tailwindcss": "^4.0.7"
   },
   "devDependencies": {

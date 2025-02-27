@@ -1437,6 +1437,11 @@ strip-json-comments@^3.1.1:
   resolved "https://registry.yarnpkg.com/strip-json-comments/-/strip-json-comments-3.1.1.tgz#31f1281b3832630434831c310c01cccda8cbe006"
   integrity sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==
 
+structurae@^4.0.2:
+  version "4.0.2"
+  resolved "https://registry.npmjs.org/structurae/-/structurae-4.0.2.tgz#9b99bdd0cf0c71ba0051b51b876836e74d22eacc"
+  integrity sha512-eVmfxEEQSEADXhvuwS2IriKw3JKZtpQ33YSyAber0GAtBGmEuOxBXopASCeslokSbiOqzezTPYfweMybzp8WNA==
+
 supports-color@^7.1.0:
   version "7.2.0"
   resolved "https://registry.yarnpkg.com/supports-color/-/supports-color-7.2.0.tgz#1b7dcdcb32b8138801b3e478ba6a51caa89648da"

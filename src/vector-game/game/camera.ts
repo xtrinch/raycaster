@@ -5,8 +5,11 @@ import { GridMap } from "./gridMap";
 import { Player } from "./player";
 import { SpriteMap } from "./spriteMap";
 // import Worker from "./workers/game.worker?worker";
+import { GridMixin } from "structurae";
 
 // import { proxy, Remote, wrap } from "comlink";
+
+const ArrayGrid = GridMixin(Uint8ClampedArray);
 
 export class Camera {
   public ctx: CanvasRenderingContext2D;
@@ -140,50 +143,12 @@ export class Camera {
     const rayDirXDist = rayDirX1 - rayDirX0;
     const rayDirYDist = rayDirY1 - rayDirY0;
 
-    // const sliceLen = this.width * 4;
-    // const ys = range(0, this.height, Math.floor(this.heightSpacing));
-    // for (let y = 0; y < this.height; y += Math.floor(this.heightSpacing)) {
-    //   const worker = this.workers[y / Math.floor(this.heightSpacing)];
-    //   worker?.renderHorizontal(
-    //     y,
-    //     transfer(new Uint8Array(this.width * this.height * 4), [
-    //       floorImgData.buffer.slice(
-    //         y * this.width * 4,
-    //         (y + flooredHeightSpacing) * this.width * 4
-    //       ),
-    //     ]),
-    //     sliceLen,
-    //     halfHeight,
-    //     posZ,
-    //     rayDirX0,
-    //     rayDirX1,
-    //     rayDirY0,
-    //     rayDirY1,
-    //     this.width,
-    //     floorTexture.width,
-    //     floorTexture.height,
-    //     flooredWidthSpacing,
-    //     flooredHeightSpacing,
-    //     player.position.x,
-    //     player.position.y,
-    //     transfer(new Uint8Array(this.imgData.length), [
-    //       this.imgData.buffer.slice(
-    //         y * this.width * 4,
-    //         (y + flooredHeightSpacing) * this.width * 4
-    //       ),
-    //     ])
-    //   );
-    // }
-
     // Vertical position of the camera.
     let posZ = 0.5 * this.heightResolution;
 
     // loop through the resolutions and scale later
-    for (
-      let y = this.heightResolution / 2 - 1;
-      y < this.heightResolution;
-      ++y
-    ) {
+    let floorCeilingHeight = this.heightResolution / 2 - 1;
+    for (let y = floorCeilingHeight; y < this.heightResolution; ++y) {
       // Current y position compared to the center of the screen (the horizon)
       let p = y - this.heightResolution / 2;
 
@@ -191,12 +156,7 @@ export class Camera {
       // 0.5 is the z position exactly in the middle between floor and ceiling.
       let rowDistance = posZ / p;
 
-      let alpha =
-        (rowDistance +
-          // step.shading
-          0) /
-          this.lightRange -
-        map.light;
+      let alpha = (rowDistance + 0) / this.lightRange - map.light;
       alpha = Math.min(alpha, 0.8);
 
       // calculate the real world step vector we have to add for each x (parallel to camera plane)
@@ -213,7 +173,9 @@ export class Camera {
         floorX += floorStepX;
         floorY += floorStepY;
 
-        if (map.get(Math.floor(floorX), Math.floor(floorY)) !== 2) continue;
+        // no roof, no draw
+        if (map.get(floorX, floorY) !== 2) continue;
+
         let cellX = floorX % 1; // the cell coord is simply got from the integer parts of floorX and floorY
         let cellY = floorY % 1;
 
@@ -229,10 +191,6 @@ export class Camera {
         const floorImgIdx = 4 * (y * this.widthResolution + x);
         const ceilingImgIdx =
           4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
-
-        // console.log(
-        //   `y:${y}, x:${x}, floorImgIdx:${floorImgIdx}, ceilingImgIdx:${ceilingImgIdx}, length:${floorImg.data.length}`
-        // );
 
         floorImg.set(slice, ceilingImgIdx);
         floorImg.set(slice, floorImgIdx);
