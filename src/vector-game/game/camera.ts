@@ -32,8 +32,8 @@ export class Camera {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width = window.innerWidth;
     this.height = canvas.height = window.innerHeight;
-    this.widthResolution = 420;
-    this.heightResolution = 220;
+    this.widthResolution = 620;
+    this.heightResolution = 420;
     this.widthSpacing = this.width / this.widthResolution;
     this.heightSpacing = this.height / this.heightResolution;
     this.range = 54;
@@ -124,6 +124,12 @@ export class Camera {
 
     // floor casting
     const floorImg = new ImageData(this.widthResolution, this.heightResolution);
+    // black pixels for floor so we can use alpha channel in the actual floor
+    const floorImgBlackPixels = new ImageData(
+      this.widthResolution,
+      this.heightResolution
+    );
+
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     let rayDirX0 = player.position.dirX - player.position.planeX;
     let rayDirY0 = player.position.dirY - player.position.planeY;
@@ -184,6 +190,14 @@ export class Camera {
       // 0.5 is the z position exactly in the middle between floor and ceiling.
       let rowDistance = posZ / p;
 
+      let alpha =
+        (rowDistance +
+          // step.shading
+          0) /
+          this.lightRange -
+        map.light;
+      alpha = Math.min(alpha, 0.8);
+
       // calculate the real world step vector we have to add for each x (parallel to camera plane)
       // adding step by step avoids multiplications with a weight in the inner loop
       let floorStepX = (rowDistance * rayDirXDist) / this.widthResolution;
@@ -202,15 +216,14 @@ export class Camera {
         let cellY = floorY % 1;
 
         // get the texture coordinate from the fractional part
-        let tx =
-          Math.floor(floorTexture.width * cellX) & (floorTexture.width - 1);
-        let ty =
-          Math.floor(floorTexture.height * cellY) & (floorTexture.height - 1);
+        let tx = Math.floor(floorTexture.width * cellX);
+        let ty = Math.floor(floorTexture.height * cellY);
 
         // find pixel
         const fullImgIdx = 4 * (ty * floorTexture.width + tx);
         const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
 
+        slice[3] = (1 - alpha) * 255;
         const floorImgIdx = 4 * (y * this.widthResolution + x);
         const ceilingImgIdx =
           4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
@@ -220,8 +233,20 @@ export class Camera {
         // );
         floorImg.data.set(slice, ceilingImgIdx);
         floorImg.data.set(slice, floorImgIdx);
+        floorImgBlackPixels.data.set([0, 0, 0, 255], ceilingImgIdx);
+        floorImgBlackPixels.data.set([0, 0, 0, 255], floorImgIdx);
       }
     }
+
+    // scale image to canvas width/height
+    var img0 = new ImageData(
+      new Uint8ClampedArray(floorImgBlackPixels.data),
+      floorImgBlackPixels.width,
+      floorImgBlackPixels.height
+    );
+
+    const renderer0 = await createImageBitmap(img0);
+    this.ctx.drawImage(renderer0, 0, 0, this.width, this.height);
 
     // scale image to canvas width/height
     var img = new ImageData(
