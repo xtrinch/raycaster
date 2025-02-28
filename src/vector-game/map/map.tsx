@@ -16,9 +16,6 @@ const Map = (props: MapProps) => {
   const playerPosition = gameContext.gameLoop?.player?.position;
   const fps = gameContext.gameLoop?.fps;
 
-  useEffect(() => {
-    gameContext.gameLoop?.camera?.initializeCanvas();
-  }, [gameContext.gameLoop?.camera]);
   if (!map || !playerPosition || !size) {
     return <></>;
   }

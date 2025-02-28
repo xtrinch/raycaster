@@ -3,13 +3,7 @@ import { makeAutoObservable } from "mobx";
 import { Bitmap } from "./bitmap";
 import { GridMap } from "./gridMap";
 import { Player } from "./player";
-import { SpriteMap } from "./spriteMap";
-// import Worker from "./workers/game.worker?worker";
-import { GridMixin } from "structurae";
-
-// import { proxy, Remote, wrap } from "comlink";
-
-const ArrayGrid = GridMixin(Uint8ClampedArray);
+import { SpriteMap, SpriteType } from "./spriteMap";
 
 export class Camera {
   public ctx: CanvasRenderingContext2D;
@@ -27,9 +21,9 @@ export class Camera {
   public context: CanvasRenderingContext2D;
   public canvas: HTMLCanvasElement;
   public map: GridMap;
-  public imgData: Uint8ClampedArray<ArrayBufferLike>;
+  public floorData: Uint8ClampedArray<ArrayBufferLike>;
+  public ceilingData: Uint8ClampedArray<ArrayBufferLike>;
   public originalCanvas: HTMLCanvasElement;
-  // public workers: Remote<WorkerType>[];
 
   constructor(canvas: HTMLCanvasElement, map: GridMap) {
     this.ctx = canvas.getContext("2d");
@@ -46,37 +40,24 @@ export class Camera {
     this.skipCounter = this.initialSkipCounter;
     this.map = map;
     this.originalCanvas = canvas;
-    // console.log("?");
-    // this.workers = range(0, this.heightResolution).map((id) => {
-    //   const gameWorker = wrap<WorkerType>(new Worker({ name: "game-worker" }));
-    //   gameWorker.onProgress(proxy((data: any) => console.log(data)));
-    //   return gameWorker;
-    // });
-    // console.log("initialized?");
-    this.initializeCanvas();
+    this.intializeTexture(this.map.floorTexture, "floorData");
+    this.intializeTexture(this.map.ceilingTexture, "ceilingData");
     makeAutoObservable(this);
   }
 
-  initializeCanvas() {
-    const floorTexture = this.map.floorTexture;
-    const img = floorTexture.image;
-    const canvas = document.getElementById("display1") as HTMLCanvasElement;
-    this.context = canvas.getContext("2d", { willReadFrequently: true });
-    canvas.width = floorTexture.width;
-    canvas.height = floorTexture.height;
-    floorTexture.image.onload = () => {
-      this.context.drawImage(
-        img,
+  intializeTexture(texture: Bitmap, key: string) {
+    const img = texture.image;
+    const canvas = document.createElement("canvas") as HTMLCanvasElement;
+    this.context = canvas.getContext("2d");
+    canvas.width = texture.width;
+    canvas.height = texture.height;
+    texture.image.onload = () => {
+      this.context.drawImage(img, 0, 0, texture.width, texture.height);
+      this[key] = this.context.getImageData(
         0,
         0,
-        floorTexture.width,
-        floorTexture.height
-      );
-      this.imgData = this.context.getImageData(
-        0,
-        0,
-        floorTexture.width,
-        floorTexture.height
+        texture.width,
+        texture.height
       )?.data;
     };
   }
@@ -114,14 +95,10 @@ export class Camera {
   }
 
   // draws columns left to right
-  async drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
-    if (!this.imgData) {
+  async drawCeilingFloor(player: Player, map: GridMap) {
+    if (!this.floorData || !this.ceilingData) {
       return;
     }
-    let ZBuffer: { [key: number]: number } = {};
-    let width = Math.ceil(this.widthSpacing);
-
-    this.ctx.save();
 
     const floorTexture = map.floorTexture;
 
@@ -185,15 +162,16 @@ export class Camera {
 
         // find pixel
         const fullImgIdx = 4 * (ty * floorTexture.width + tx);
-        const slice = this.imgData.slice(fullImgIdx, fullImgIdx + 4);
+        const sliceFloor = this.floorData.slice(fullImgIdx, fullImgIdx + 4);
+        const sliceCeiling = this.ceilingData.slice(fullImgIdx, fullImgIdx + 4);
 
-        slice[3] = rowAlpha;
+        sliceFloor[3] = rowAlpha;
         const floorImgIdx = 4 * (y * this.widthResolution + x);
         const ceilingImgIdx =
           4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
 
-        floorImg.set(slice, ceilingImgIdx);
-        floorImg.set(slice, floorImgIdx);
+        floorImg.set(sliceCeiling, ceilingImgIdx);
+        floorImg.set(sliceFloor, floorImgIdx);
         floorImgBlackPixels.set([0, 0, 0, 255], ceilingImgIdx);
         floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
       }
@@ -218,6 +196,12 @@ export class Camera {
 
     const renderer = await createImageBitmap(img);
     this.ctx.drawImage(renderer, 0, 0, this.width, this.height);
+  }
+
+  // draws columns left to right
+  drawWalls(player: Player, map: GridMap): { [key: number]: number } {
+    let ZBuffer: { [key: number]: number } = {};
+    let width = Math.ceil(this.widthSpacing);
 
     // wall casting
     for (let column = 0; column < this.widthResolution; column++) {
@@ -371,8 +355,16 @@ export class Camera {
       }
     }
 
-    let treeTexture = map.treeTexture;
+    return ZBuffer;
+  }
 
+  // draws columns left to right
+  async drawSprites(
+    player: Player,
+    map: GridMap,
+    spriteMap: SpriteMap,
+    ZBuffer: { [key: number]: number }
+  ) {
     // SPRITE CASTING
     // sort sprites from far to close
     const sortedSprites = sortBy(
@@ -385,8 +377,9 @@ export class Camera {
     // after sorting the sprites, do the projection and draw them
     for (let i = 0; i < spriteMap.size; i++) {
       // translate sprite position to relative to camera
-      let spriteX = sortedSprites[i][0] - player.position.x;
-      let spriteY = sortedSprites[i][1] - player.position.y;
+      let sprite = sortedSprites[i];
+      let spriteX = sprite[0] - player.position.x;
+      let spriteY = sprite[1] - player.position.y;
 
       // transform sprite with the inverse camera matrix
       // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
@@ -463,24 +456,36 @@ export class Camera {
           stripeParts.push(stripe);
         }
       }
+      let texture: Bitmap;
+      switch (sprite[2]) {
+        case SpriteType.TREE_CONE:
+          texture = map.treeTexture;
+          break;
+        case SpriteType.TREE_VASE:
+          texture = map.treeTextureVase;
+          break;
+        case SpriteType.TREE_COLUMNAR:
+          texture = map.treeTextureColumnar;
+          break;
+      }
       for (let stripeIdx = 0; stripeIdx < stripeParts.length; stripeIdx += 2) {
         let texX1 = Math.floor(
           ((stripeParts[stripeIdx] - (-spriteWidth / 2 + spriteScreenX)) *
-            treeTexture.width) /
+            texture.width) /
             spriteWidth
         );
         let texX2 = Math.ceil(
           ((stripeParts[stripeIdx + 1] - (-spriteWidth / 2 + spriteScreenX)) *
-            treeTexture.width) /
+            texture.width) /
             spriteWidth
         );
 
         this.ctx.drawImage(
-          treeTexture.image,
+          texture.image,
           texX1, // sx
           0, // sy
           texX2 - texX1, // sw
-          treeTexture.height, // sh
+          texture.height, // sh
           stripeParts[stripeIdx], // dx
           fullDrawStartY, // dy
           stripeParts[stripeIdx + 1] - stripeParts[stripeIdx], // dw
@@ -489,6 +494,16 @@ export class Camera {
       }
     }
     this.ctx.filter = `brightness(100%)`;
+  }
+
+  // draws columns left to right
+  async drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
+    this.ctx.save();
+
+    await this.drawCeilingFloor(player, map);
+    let ZBuffer = this.drawWalls(player, map);
+    this.drawSprites(player, map, spriteMap, ZBuffer);
+
     this.ctx.restore();
   }
 

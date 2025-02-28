@@ -14,6 +14,8 @@ export class GameLoop {
   public camera: Camera;
   public spriteMap: SpriteMap;
   public fps: number;
+  public frameTime: number;
+
   constructor() {
     this.map = new GridMap(32);
     this.spriteMap = new SpriteMap();
@@ -25,15 +27,17 @@ export class GameLoop {
     this.camera = new Camera(this.display, this.map);
     this.player = this.findSpawnPoint();
     this.fps = 0;
+    this.frameTime = 0;
     makeAutoObservable(this);
   }
 
   frame(time: number) {
-    let seconds = (time - this.lastTime) / 1000;
-    this.fps = Math.floor(1.0 / seconds);
-    if (seconds > 0.01) {
+    this.frameTime = (time - this.lastTime) / 1000;
+
+    this.fps = Math.floor(1.0 / this.frameTime);
+    if (this.frameTime > 0.01) {
       this.lastTime = time;
-      this.loop(seconds);
+      this.loop();
     }
     requestAnimationFrame(this.frame.bind(this));
   }
@@ -42,9 +46,9 @@ export class GameLoop {
     requestAnimationFrame(this.frame.bind(this));
   }
 
-  loop(seconds: number) {
-    this.map.update(seconds);
-    this.player.update(this.controls.states, this.map, seconds);
+  loop() {
+    this.map.update(this.frameTime);
+    this.player.update(this.controls.states, this.map, this.frameTime);
     this.camera.render(this.player, this.map, this.spriteMap);
   }
 

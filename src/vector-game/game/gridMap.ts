@@ -1,11 +1,11 @@
 import { makeAutoObservable } from "mobx";
+import ceilingTexture from "../../assets/ceiling.jpeg";
 import panorama from "../../assets/deathvalley_panorama.jpg";
-import floorTexture1 from "../../assets/floor1.jpeg";
-import floorTexture from "../../assets/floor3.jpeg";
-import floorTexture2 from "../../assets/floor4.jpeg";
 import floorTexture3 from "../../assets/floor5.jpeg";
+import treeTextureColumnar from "../../assets/trees/columnnar.png";
 import treeTexture1 from "../../assets/trees/open.png";
 import treeTexture from "../../assets/trees/pyramid.png";
+import treeTextureVase from "../../assets/trees/vase.png";
 import wallTexture from "../../assets/wall_texture.jpg";
 import { Bitmap } from "./bitmap";
 import { perlinNoise } from "./constants";
@@ -31,6 +31,9 @@ export class GridMap {
   public treeTexture: Bitmap;
   public treeTexture1: Bitmap;
   public floorTexture: Bitmap;
+  public ceilingTexture: Bitmap;
+  public treeTextureVase: Bitmap;
+  public treeTextureColumnar: Bitmap;
   public light: number;
 
   constructor(size: number) {
@@ -40,24 +43,23 @@ export class GridMap {
     this.wallTexture = new Bitmap(wallTexture, 1024, 1024);
     this.treeTexture = new Bitmap(treeTexture, 452, 679);
     this.treeTexture1 = new Bitmap(treeTexture1, 452, 679);
-    this.floorTexture = new Bitmap(floorTexture, 253, 253);
-    this.floorTexture = new Bitmap(wallTexture, 1024, 1024);
-    this.floorTexture = new Bitmap(floorTexture1, 874, 874);
-    this.floorTexture = new Bitmap(floorTexture2, 874, 874);
+    this.treeTextureVase = new Bitmap(treeTextureVase, 500, 522);
     this.floorTexture = new Bitmap(floorTexture3, 787, 787);
+    this.ceilingTexture = new Bitmap(ceilingTexture, 787, 787);
+    this.treeTextureColumnar = new Bitmap(treeTextureColumnar, 229, 645);
 
     this.light = 0;
     // prettier-ignore
     this.wallGrid = new Uint8Array([
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0,
-      0, 2, 2, 2, 2, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
-      0, 1, 2, 2, 2, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0,
-      0, 1, 2, 2, 2, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
-      0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 1, 2, 2, 2, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
-      0, 1, 2, 2, 2, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
-      0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+      0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0,
+      0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+      0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
       0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
@@ -89,6 +91,7 @@ export class GridMap {
   public get = (x: number, y: number): number => {
     x = Math.floor(x);
     y = Math.floor(y);
+    if (x < 0 || x > this.size - 1 || y < 0 || y > this.size - 1) return -1;
     return this.wallGrid[y * this.size + x];
   };
 
