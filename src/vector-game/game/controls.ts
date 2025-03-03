@@ -5,15 +5,32 @@ export interface ControlStates {
   right: boolean;
   backward: boolean;
   forward: boolean;
+  lookUp: boolean;
+  lookDown: boolean;
+  jumpUp: boolean;
+  jumpDown: boolean;
 }
 
 export class Controls {
-  public codes = { 37: "left", 39: "right", 38: "forward", 40: "backward" };
+  public codes = {
+    37: "left",
+    39: "right",
+    38: "forward",
+    40: "backward",
+    65: "lookUp", // a
+    83: "lookDown", // s
+    68: "jumpUp", // d
+    70: "jumpDown", // f
+  };
   public states: ControlStates = {
     left: false,
     right: false,
     forward: false,
     backward: false,
+    lookUp: false,
+    lookDown: false,
+    jumpUp: false,
+    jumpDown: false,
   };
 
   constructor() {

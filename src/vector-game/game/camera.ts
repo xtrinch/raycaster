@@ -11,6 +11,8 @@ export class Camera {
   public height: number;
   public widthResolution: number; // how many columns we draw
   public heightResolution: number; // how many scanlines we draw
+  public ceilingWidthResolution: number; // how many columns we draw
+  public ceilingHeightResolution: number; // how many scanlines we draw
   public widthSpacing: number;
   public heightSpacing: number;
   public range: number;
@@ -31,6 +33,8 @@ export class Camera {
     this.height = canvas.height = window.innerHeight;
     this.widthResolution = 420;
     this.heightResolution = 320;
+    this.ceilingHeightResolution = 250;
+    this.ceilingWidthResolution = 350;
     this.widthSpacing = this.width / this.widthResolution;
     this.heightSpacing = this.height / this.heightResolution;
     this.range = 54;
@@ -103,12 +107,12 @@ export class Camera {
     const floorTexture = map.floorTexture;
 
     // floor casting
-    const floorImg = new Uint8ClampedArray(
-      this.widthResolution * this.heightResolution * 4
+    const ceilingFloorImg = new Uint8ClampedArray(
+      this.ceilingWidthResolution * this.ceilingHeightResolution * 4
     );
     // black pixels for floor so we can use alpha channel in the actual floor
     const floorImgBlackPixels = new Uint8ClampedArray(
-      this.widthResolution * this.heightResolution * 4
+      this.ceilingWidthResolution * this.ceilingHeightResolution * 4
     );
 
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
@@ -121,32 +125,62 @@ export class Camera {
     const rayDirYDist = rayDirY1 - rayDirY0;
 
     // Vertical position of the camera.
-    let posZ = 0.5 * this.heightResolution;
+    let halfHeight = this.ceilingHeightResolution / 2;
+
+    // since we're drawing a smaller image, we also need to scale the pitch
+    const scale = this.ceilingHeightResolution / this.height;
+    let scaledPitch = player.position.pitch * scale;
+    let scaledZ = player.position.z * scale;
 
     // loop through the resolutions and scale later
-    let floorCeilingHeight = this.heightResolution / 2 - 1;
-    for (let y = floorCeilingHeight; y < this.heightResolution; ++y) {
+    for (let y = 0; y < this.ceilingHeightResolution; ++y) {
+      // whether this section is floor or ceiling
+      let isFloor = y > halfHeight + scaledPitch;
+
       // Current y position compared to the center of the screen (the horizon)
-      let p = y - this.heightResolution / 2;
+      let p = isFloor
+        ? y - halfHeight - scaledPitch
+        : halfHeight - y + scaledPitch;
+
+      // Vertical position of the camera.
+      // NOTE: with 0.5, it's exactly in the center between floor and ceiling,
+      // matching also how the walls are being raycasted. For different values
+      // than 0.5, a separate loop must be done for ceiling and floor since
+      // they're no longer symmetrical.
+      let camZ = isFloor ? halfHeight + scaledZ : halfHeight - scaledZ;
 
       // Horizontal distance from the camera to the floor for the current row.
       // 0.5 is the z position exactly in the middle between floor and ceiling.
-      let rowDistance = posZ / p;
+      // NOTE: this is affine texture mapping, which is not perspective correct
+      // except for perfectly horizontal and vertical surfaces like the floor.
+      // NOTE: this formula is explained as follows: The camera ray goes through
+      // the following two points: the camera itself, which is at a certain
+      // height (posZ), and a point in front of the camera (through an imagined
+      // vertical plane containing the screen pixels) with horizontal distance
+      // 1 from the camera, and vertical position p lower than posZ (posZ - p). When going
+      // through that point, the line has vertically traveled by p units and
+      // horizontally by 1 unit. To hit the floor, it instead needs to travel by
+      // posZ units. It will travel the same ratio horizontally. The ratio was
+      // 1 / p for going through the camera plane, so to go posZ times farther
+      // to reach the floor, we get that the total horizontal distance is posZ / p.
+      let rowDistance = camZ / p;
 
       let alpha = (rowDistance + 0) / this.lightRange - map.light;
       alpha = Math.min(alpha, 0.8);
 
       // calculate the real world step vector we have to add for each x (parallel to camera plane)
       // adding step by step avoids multiplications with a weight in the inner loop
-      let floorStepX = (rowDistance * rayDirXDist) / this.widthResolution;
-      let floorStepY = (rowDistance * rayDirYDist) / this.widthResolution;
+      let floorStepX =
+        (rowDistance * rayDirXDist) / this.ceilingWidthResolution;
+      let floorStepY =
+        (rowDistance * rayDirYDist) / this.ceilingWidthResolution;
 
       // real world coordinates of the leftmost column. This will be updated as we step to the right.
       let floorX = player.position.x + rowDistance * rayDirX0;
       let floorY = player.position.y + rowDistance * rayDirY0;
 
       const rowAlpha = (1 - alpha) * 255;
-      for (let x = 0; x < this.widthResolution; ++x) {
+      for (let x = 0; x < this.ceilingWidthResolution; ++x) {
         floorX += floorStepX;
         floorY += floorStepY;
 
@@ -166,22 +200,23 @@ export class Camera {
         const sliceCeiling = this.ceilingData.slice(fullImgIdx, fullImgIdx + 4);
 
         sliceFloor[3] = rowAlpha;
-        const floorImgIdx = 4 * (y * this.widthResolution + x);
-        const ceilingImgIdx =
-          4 * ((this.heightResolution - y - 1) * this.widthResolution + x);
+        const floorImgIdx = 4 * (y * this.ceilingWidthResolution + x);
 
-        floorImg.set(sliceCeiling, ceilingImgIdx);
-        floorImg.set(sliceFloor, floorImgIdx);
-        floorImgBlackPixels.set([0, 0, 0, 255], ceilingImgIdx);
-        floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
+        if (isFloor) {
+          ceilingFloorImg.set(sliceFloor, floorImgIdx);
+          floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
+        } else {
+          ceilingFloorImg.set(sliceCeiling, floorImgIdx);
+          floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
+        }
       }
     }
 
     // scale image to canvas width/height
     var img0 = new ImageData(
       floorImgBlackPixels,
-      this.widthResolution,
-      this.heightResolution
+      this.ceilingWidthResolution,
+      this.ceilingHeightResolution
     );
 
     const renderer0 = await createImageBitmap(img0);
@@ -189,9 +224,9 @@ export class Camera {
 
     // scale image to canvas width/height
     var img = new ImageData(
-      floorImg,
-      this.widthResolution,
-      this.heightResolution
+      ceilingFloorImg,
+      this.ceilingWidthResolution,
+      this.ceilingHeightResolution
     );
 
     const renderer = await createImageBitmap(img);
@@ -301,8 +336,16 @@ export class Camera {
       let lineHeight: number = this.height / perpWallDist;
 
       // calculate lowest and highest pixel to fill in current stripe
-      let drawStartY = -lineHeight / 2 + this.height / 2;
-      let drawEndY = lineHeight / 2 + this.height / 2;
+      let drawStartY =
+        -lineHeight / 2 +
+        this.height / 2 +
+        player.position.pitch +
+        player.position.z / perpWallDist;
+      let drawEndY =
+        lineHeight / 2 +
+        this.height / 2 +
+        player.position.pitch +
+        player.position.z / perpWallDist;
 
       let texture = map.wallTexture;
 
@@ -402,11 +445,18 @@ export class Camera {
         (this.width / 2) * (1 + transformX / transformY)
       );
 
+      const vMove = 0;
+      // to control the pitch / jump
+      let vMoveScreen =
+        Math.floor(vMove / transformY) +
+        player.position.pitch +
+        player.position.z / transformY;
+
       // calculate height of the sprite on screen
       let spriteHeight = Math.abs(Math.floor(this.height / transformY)); //using 'transformY' instead of the real distance prevents fisheye
       // calculate lowest and highest pixel to fill in current stripe
-      let fullDrawStartY = -spriteHeight / 2 + this.height / 2;
-      let fullDrawEndY = spriteHeight / 2 + this.height / 2;
+      let fullDrawStartY = -spriteHeight / 2 + this.height / 2 + vMoveScreen;
+      let fullDrawEndY = spriteHeight / 2 + this.height / 2 + vMoveScreen;
 
       // calculate width of the sprite
       let spriteWidth = Math.abs(Math.floor(this.height / transformY));
