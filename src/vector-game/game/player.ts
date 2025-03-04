@@ -71,6 +71,7 @@ export class Player {
 
   public jumpUp = (frameTime: number) => {
     this.position.z += 400 * frameTime;
+    if (this.position.z > 300) this.position.z = 300;
   };
 
   public jumpDown = (frameTime: number) => {
@@ -95,8 +96,8 @@ export class Player {
     map: GridMap,
     frameTime: number
   ) => {
-    if (controls.left) this.rotate(-Math.PI * frameTime);
-    if (controls.right) this.rotate(Math.PI * frameTime);
+    if (controls.left) this.rotate(4 * (-Math.PI / 5) * frameTime);
+    if (controls.right) this.rotate(4 * (Math.PI / 5) * frameTime);
     if (controls.forward) this.walk(3 * frameTime, map);
     if (controls.backward) this.walk(-3 * frameTime, map);
     if (controls.jumpDown) this.jumpDown(frameTime);

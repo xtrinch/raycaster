@@ -1,7 +1,8 @@
 import { makeAutoObservable } from "mobx";
-import ceilingTexture from "../../assets/ceiling.jpeg";
+import pillarTexture from "../../assets/barrel1.png";
+import ceilingTexture from "../../assets/ceiling-scaled2.jpeg";
 import panorama from "../../assets/deathvalley_panorama.jpg";
-import floorTexture3 from "../../assets/floor5.jpeg";
+import floorTexture3 from "../../assets/floor5-scaled.jpeg";
 import treeTextureColumnar from "../../assets/trees/columnnar.png";
 import treeTexture1 from "../../assets/trees/open.png";
 import treeTexture from "../../assets/trees/pyramid.png";
@@ -34,6 +35,7 @@ export class GridMap {
   public ceilingTexture: Bitmap;
   public treeTextureVase: Bitmap;
   public treeTextureColumnar: Bitmap;
+  public pillarTexture: Bitmap;
   public light: number;
 
   constructor(size: number) {
@@ -44,22 +46,25 @@ export class GridMap {
     this.treeTexture = new Bitmap(treeTexture, 452, 679);
     this.treeTexture1 = new Bitmap(treeTexture1, 452, 679);
     this.treeTextureVase = new Bitmap(treeTextureVase, 500, 522);
-    this.floorTexture = new Bitmap(floorTexture3, 787, 787);
-    this.ceilingTexture = new Bitmap(ceilingTexture, 787, 787);
+    this.floorTexture = new Bitmap(floorTexture3, 187, 187);
+    // this.floorTexture = new Bitmap(floorTexture4, 176, 176);
+    this.ceilingTexture = new Bitmap(ceilingTexture, 145, 145);
     this.treeTextureColumnar = new Bitmap(treeTextureColumnar, 229, 645);
+    this.pillarTexture = new Bitmap(pillarTexture, 256, 640);
+    this.pillarTexture = new Bitmap(pillarTexture, 355, 438);
 
     this.light = 0;
     // prettier-ignore
     this.wallGrid = new Uint8Array([
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0,
-      0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
-      0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0,
-      0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
-      0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
-      0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
-      0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+      0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+      0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+      0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0,
       0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
