@@ -84,6 +84,64 @@ export class Camera {
     this.ctx.restore();
   }
 
+  translateCoordinateToCamera(
+    player: Player,
+    point: number[],
+    heightMultiplier: number = 1
+  ): {
+    screenX: number;
+    screenYFloor: number;
+    screenYCeiling: number;
+    distance: number;
+    fullHeight: number;
+  } {
+    // translate x y position to relative to camera
+    let spriteX = point[0] - player.position.x;
+    let spriteY = point[1] - player.position.y;
+
+    // transform sprite with the inverse camera matrix
+    // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+    // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+    // [ planeY   dirY ]                                          [ -planeY  planeX ]
+
+    let invDet =
+      1.0 /
+      (player.position.planeX * player.position.dirY -
+        player.position.dirX * player.position.planeY); // required for correct matrix multiplication
+
+    let transformX =
+      invDet *
+      (player.position.dirY * spriteX - player.position.dirX * spriteY);
+    let transformY =
+      invDet *
+      (-player.position.planeY * spriteX + player.position.planeX * spriteY); // this is actually the depth inside the screen, that what Z is in 3D
+
+    let screenX = Math.floor((this.width / 2) * (1 + transformX / transformY));
+
+    // to control the pitch / jump
+    let vMoveScreen = player.position.pitch + player.position.z;
+
+    let yHeightBeforeAdjustment = Math.abs(
+      Math.floor(this.height / transformY)
+    );
+    let yHeight = yHeightBeforeAdjustment * heightMultiplier; // using 'transformY' instead of the real distance prevents fisheye
+    let heightDistance = yHeightBeforeAdjustment - yHeight;
+    let screenCeilingY = this.height / 2 - yHeight / 2;
+    let screenFloorY = this.height / 2 + yHeight / 2;
+    let spriteFloorScreenY = screenFloorY + vMoveScreen + heightDistance / 2;
+    let spriteCeilingScreenY =
+      screenCeilingY + vMoveScreen + heightDistance / 2;
+    let fullHeight = spriteCeilingScreenY - spriteFloorScreenY;
+
+    return {
+      screenX: screenX,
+      screenYFloor: spriteFloorScreenY,
+      screenYCeiling: spriteCeilingScreenY,
+      distance: transformY,
+      fullHeight: fullHeight,
+    };
+  }
+
   // draws columns left to right
   drawCeilingFloor(player: Player, map: GridMap) {
     const ceilingSrcPoints = [
@@ -102,8 +160,7 @@ export class Camera {
     // find which x and ys are on the screen
 
     const width = this.width;
-    const height = this.height;
-    let distance = 0;
+    let dst = 0;
     // for now, do them all
     for (let y = 0; y < map.size; y++) {
       for (let x = 0; x < map.size; x++) {
@@ -120,65 +177,30 @@ export class Camera {
           continue;
         }
         for (let point of points) {
-          // translate x y position to relative to camera
-          let spriteX = point[0] - player.position.x;
-          let spriteY = point[1] - player.position.y;
-
-          // transform sprite with the inverse camera matrix
-          // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
-          // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
-          // [ planeY   dirY ]                                          [ -planeY  planeX ]
-
-          let invDet =
-            1.0 /
-            (player.position.planeX * player.position.dirY -
-              player.position.dirX * player.position.planeY); //required for correct matrix multiplication
-
-          let transformX =
-            invDet *
-            (player.position.dirY * spriteX - player.position.dirX * spriteY);
-          let transformY =
-            invDet *
-            (-player.position.planeY * spriteX +
-              player.position.planeX * spriteY); //this is actually the depth inside the screen, that what Z is in 3D
-          let spriteScreenX = Math.floor(
-            (width / 2) * (1 + transformX / transformY)
-          );
-
-          const vMove = 0;
-          // to control the pitch / jump
-          let vMoveScreen =
-            Math.floor(vMove / transformY) +
-            player.position.pitch +
-            player.position.z;
-
-          let spriteHeight = Math.abs(Math.floor(height / transformY)); //using 'transformY' instead of the real distance prevents fisheye
-          let screenCeilingY = height / 2 - spriteHeight / 2;
-          let screenFloorY = height / 2 + spriteHeight / 2;
-          let spriteFloorScreenY = screenFloorY + vMoveScreen;
-          let spriteCeilingScreenY = screenCeilingY + vMoveScreen;
+          const { screenX, screenYCeiling, screenYFloor, distance } =
+            this.translateCoordinateToCamera(player, point);
 
           if (
-            transformY > 0 &&
-            spriteScreenX >= 0 &&
-            spriteScreenX <= width &&
-            transformY < 10
+            distance > 0 &&
+            screenX >= 0 &&
+            screenX <= width &&
+            distance < 10
           ) {
-            distance = Math.abs(transformY);
+            dst = Math.abs(distance);
             numOnScreen++;
           }
-          floorScreenPoints.push({ x: spriteScreenX, y: spriteFloorScreenY });
+          floorScreenPoints.push({ x: screenX, y: screenYFloor });
           ceilingScreenPoints.push({
-            x: spriteScreenX,
-            y: spriteCeilingScreenY,
+            x: screenX,
+            y: screenYCeiling,
           });
         }
 
-        let tesselation = 9 - distance * 2;
+        let tesselation = 9 - dst * 2;
         if (tesselation <= 1) tesselation = 1;
         if (tesselation >= 7) tesselation = 7;
         if (numOnScreen >= 1) {
-          const alpha = (distance + 0) / this.lightRange - map.light;
+          const alpha = (dst + 0) / this.lightRange - map.light;
           // ensure walls are always at least a little bit visible - alpha 1 is all black
           const brightness = Math.min(
             Math.max(0, Math.floor(100 - alpha * 100), 20)
@@ -412,38 +434,8 @@ export class Camera {
 
     // after sorting the sprites, do the projection and draw them
     for (let i = 0; i < spriteMap.size; i++) {
-      // translate sprite position to relative to camera
+      // // translate sprite position to relative to camera
       let sprite = sortedSprites[i];
-      let spriteX = sprite[0] - player.position.x;
-      let spriteY = sprite[1] - player.position.y;
-
-      // transform sprite with the inverse camera matrix
-      // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
-      // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
-      // [ planeY   dirY ]                                          [ -planeY  planeX ]
-
-      let invDet =
-        1.0 /
-        (player.position.planeX * player.position.dirY -
-          player.position.dirX * player.position.planeY); //required for correct matrix multiplication
-
-      let transformX =
-        invDet *
-        (player.position.dirY * spriteX - player.position.dirX * spriteY);
-      let transformY =
-        invDet *
-        (-player.position.planeY * spriteX + player.position.planeX * spriteY); //this is actually the depth inside the screen, that what Z is in 3D
-
-      let spriteScreenX = Math.floor(
-        (this.width / 2) * (1 + transformX / transformY)
-      );
-
-      const vMove = 0;
-      // to control the pitch / jump
-      let vMoveScreen =
-        Math.floor(vMove / transformY) +
-        player.position.pitch +
-        player.position.z;
 
       let texture: Bitmap;
       let spriteTextureHeight = 1;
@@ -454,6 +446,7 @@ export class Camera {
           break;
         case SpriteType.TREE_VASE:
           texture = map.treeTextureVase;
+          spriteTextureHeight = 0.3;
           break;
         case SpriteType.TREE_COLUMNAR:
           texture = map.treeTextureColumnar;
@@ -465,33 +458,19 @@ export class Camera {
           break;
       }
 
-      // calculate height of the sprite on screen
-      let spriteFullHeight = Math.abs(Math.floor(this.height / transformY)); //using 'transformY' instead of the real distance prevents fisheye
-      let spriteHeight = Math.abs(
-        Math.floor(spriteTextureHeight * (this.height / transformY))
-      ); //using 'transformY' instead of the real distance prevents fisheye
-      // calculate lowest and highest pixel to fill in current stripe
-      let fullDrawStartY =
-        -spriteHeight / 2 +
-        this.height / 2 +
-        vMoveScreen +
-        (spriteFullHeight - spriteHeight) / 2;
-      let fullDrawEndY =
-        spriteHeight / 2 +
-        this.height / 2 +
-        vMoveScreen +
-        (spriteFullHeight - spriteHeight) / 2;
+      const { screenX, screenYCeiling, screenYFloor, distance, fullHeight } =
+        this.translateCoordinateToCamera(player, sprite, spriteTextureHeight);
 
       // calculate width of the sprite
       let spriteWidth = Math.abs(
-        Math.floor(spriteTextureHeight * (this.height / transformY))
+        Math.floor(spriteTextureHeight * (this.height / distance))
       );
-      let drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
+      let drawStartX = Math.floor(-spriteWidth / 2 + screenX);
       if (drawStartX < 0) drawStartX = 0;
-      let drawEndX = spriteWidth / 2 + spriteScreenX;
+      let drawEndX = spriteWidth / 2 + screenX;
       if (drawEndX >= this.width) drawEndX = this.width - 1;
 
-      const alpha = (transformY + 0) / this.lightRange - map.light;
+      const alpha = distance / this.lightRange - map.light;
       // ensure walls are always at least a little bit visible - alpha 1 is all black
       this.ctx.filter = `brightness(${Math.min(
         Math.max(0, Math.floor(100 - alpha * 100), 20)
@@ -510,10 +489,10 @@ export class Camera {
         //3) it's on the screen (right)
         //4) ZBuffer, with perpendicular distance
         if (
-          transformY > 0 &&
+          distance > 0 &&
           stripe >= 0 &&
           stripe <= this.width &&
-          transformY < ZBuffer[Math.floor(stripe / this.widthSpacing)]
+          distance < ZBuffer[Math.floor(stripe / this.widthSpacing)]
         ) {
           // no x yet
           if (stripeParts.length % 2 === 0) {
@@ -535,12 +514,12 @@ export class Camera {
 
       for (let stripeIdx = 0; stripeIdx < stripeParts.length; stripeIdx += 2) {
         let texX1 = Math.floor(
-          ((stripeParts[stripeIdx] - (-spriteWidth / 2 + spriteScreenX)) *
+          ((stripeParts[stripeIdx] - (-spriteWidth / 2 + screenX)) *
             texture.width) /
             spriteWidth
         );
         let texX2 = Math.ceil(
-          ((stripeParts[stripeIdx + 1] - (-spriteWidth / 2 + spriteScreenX)) *
+          ((stripeParts[stripeIdx + 1] - (-spriteWidth / 2 + screenX)) *
             texture.width) /
             spriteWidth
         );
@@ -552,9 +531,9 @@ export class Camera {
           texX2 - texX1, // sw
           texture.height, // sh
           stripeParts[stripeIdx], // dx
-          fullDrawStartY, // dy
+          screenYCeiling, // dy
           stripeParts[stripeIdx + 1] - stripeParts[stripeIdx], // dw
-          fullDrawEndY - fullDrawStartY // dh
+          screenYFloor - screenYCeiling // dh
         );
       }
     }
