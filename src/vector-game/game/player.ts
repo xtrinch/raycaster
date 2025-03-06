@@ -61,10 +61,20 @@ export class Player {
   public walk = (distance: number, map: GridMap) => {
     let dx = this.position.dirX * distance;
     let dy = this.position.dirY * distance;
-    if (map.get(this.position.x + dx, this.position.y) != 1) {
+    let safety = 0.2;
+    let safetyX = dx > 0 ? safety : -safety;
+    let safetyY = dy > 0 ? safety : -safety;
+
+    // if (
+    //   map.get(this.position.x + dx + safetyX, this.position.y + dy + safetyY) ==
+    //   1
+    // ) {
+    //   return;
+    // }
+    if (map.get(this.position.x + dx + safetyX, this.position.y) != 1) {
       this.position.x += dx;
     }
-    if (map.get(this.position.x, this.position.y + dy) != 1) {
+    if (map.get(this.position.x, this.position.y + dy + safetyY) != 1) {
       this.position.y += dy;
     }
   };
@@ -72,6 +82,7 @@ export class Player {
   public jumpUp = (frameTime: number) => {
     this.position.z += 400 * frameTime;
     if (this.position.z > 300) this.position.z = 300;
+    // if (this.position.z > 9000) this.position.z = 9000;
   };
 
   public jumpDown = (frameTime: number) => {
