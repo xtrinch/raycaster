@@ -14,6 +14,7 @@ export interface Position {
   planeX: number; // x component of camera plane
   planeY: number; // y component of camera plane
   pitch: number;
+  planeYInitial: number;
 }
 
 export class Player {
@@ -31,7 +32,17 @@ export class Player {
     planeX: number,
     planeY: number
   ) {
-    this.position = { x, y, z, dirX, dirY, planeX, planeY, pitch: 0 };
+    this.position = {
+      x,
+      y,
+      z,
+      dirX,
+      dirY,
+      planeX,
+      planeY,
+      pitch: 0,
+      planeYInitial: planeY,
+    };
     this.weapon = new Bitmap(knifeHand, 319, 320);
     this.paces = 0;
 
@@ -40,6 +51,14 @@ export class Player {
 
   public rotate = (angle: number) => {
     const rotSpeed = angle;
+
+    //  //both camera direction and camera plane must be rotated
+    //  double oldDirX = dirX;
+    //  dirX = dirX * cos(-rotSpeed) - dirY * sin(-rotSpeed);
+    //  dirY = oldDirX * sin(-rotSpeed) + dirY * cos(-rotSpeed);
+    //  double oldPlaneX = planeX;
+    //  planeX = planeX * cos(-rotSpeed) - planeY * sin(-rotSpeed);
+    //  planeY = oldPlaneX * sin(-rotSpeed) + planeY * cos(-rotSpeed);
 
     let oldDirX = this.position.dirX;
     this.position.dirX =

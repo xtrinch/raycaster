@@ -114,6 +114,8 @@ export class Camera {
     screenYCeiling: number;
     distance: number;
     fullHeight: number;
+    transformX: number;
+    transformY: number;
   } {
     const distX = 0; //player.position.dirX;
     const distY = 0; //player.position.dirY;
@@ -140,10 +142,11 @@ export class Camera {
     // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
     // [ planeY   dirY ]                                          [ -planeY  planeX ]
 
-    let invDet =
+    let invDet = Math.abs(
       1.0 /
-      (playerPositionPlaneX * playerPositionDirY -
-        playerPositionDirX * playerPositionPlaneY); // required for correct matrix multiplication
+        (playerPositionPlaneX * playerPositionDirY -
+          playerPositionDirX * playerPositionPlaneY)
+    ); // required for correct matrix multiplication
     let transformX =
       invDet * (playerPositionDirY * spriteX - playerPositionDirX * spriteY);
     let transformY =
@@ -151,21 +154,25 @@ export class Camera {
       (-playerPositionPlaneY * spriteX + playerPositionPlaneX * spriteY); // this is actually the depth inside the screen, that what Z is in 3D
     if (transformY < 0) {
       // transformY = 0.05;
-      // transformY = Math.abs(transformY);
+      transformY = Math.abs(transformY);
     }
-    if (transformY < 0.3) {
-      // transformY = 0.3;
+    if (transformY < 0.1) {
+      transformY = 0.1;
     }
 
     let screenX = Math.floor((this.width / 2) * (1 + transformX / transformY));
-    if (transformY < 0) {
-      screenX = this.width - screenX;
-    }
+    // if (transformY < 0) {
+    //   screenX = this.width - screenX;
+    // }
+    // if (screenX > 5000) {
+    //   screenX = 5000;
+    // }
     // to control the pitch / jump
     let vMoveScreen = player.position.pitch + player.position.z;
 
+    // DIVIDE BY FOCAL LENGTH WHICH IS LENGTH OF THE PLANE VECTOR
     let yHeightBeforeAdjustment = Math.abs(
-      Math.floor(this.height / transformY)
+      Math.floor(this.height / player.position.planeYInitial / transformY)
     );
     let yHeight = yHeightBeforeAdjustment * heightMultiplier; // using 'transformY' instead of the real distance prevents fisheye
     let heightDistance = yHeightBeforeAdjustment - yHeight;
@@ -200,7 +207,6 @@ export class Camera {
     for (let column = 0; column < this.widthResolution; column++) {
       // x-coordinate in camera space scaled from -1 to 1
       let cameraX = (2 * column) / this.widthResolution - 1;
-
       // get the ray direction vector
       let rayDirX = player.position.dirX + player.position.planeX * cameraX;
       let rayDirY = player.position.dirY + player.position.planeY * cameraX;
@@ -260,16 +266,16 @@ export class Camera {
       // perform DDA
       let range = this.range;
       while (hit == 0 && range >= 0) {
-        // jump to next map square, either in x-direction, or in y-direction
-        if (sideDistX < sideDistY) {
-          sideDistX += deltaDistX;
-          mapX += stepX;
-          side = 0;
-        } else {
-          sideDistY += deltaDistY;
-          mapY += stepY;
-          side = 1;
-        }
+        // // jump to next map square, either in x-direction, or in y-direction
+        // if (sideDistX < sideDistY) {
+        //   sideDistX += deltaDistX;
+        //   mapX += stepX;
+        //   side = 0;
+        // } else {
+        //   sideDistY += deltaDistY;
+        //   mapY += stepY;
+        //   side = 1;
+        // }
 
         const xCoord = Math.floor(mapX);
         const yCoord = Math.floor(mapY);
@@ -371,11 +377,18 @@ export class Camera {
             coords[coordIdx].visibleSquares[wallSide] = [x, y, x1, y1];
             // }
           }
-          if (range == this.range) {
-            // console.log([x, y, x1, y1]);
-          }
         }
 
+        // jump to next map square, either in x-direction, or in y-direction
+        if (sideDistX < sideDistY) {
+          sideDistX += deltaDistX;
+          mapX += stepX;
+          side = 0;
+        } else {
+          sideDistY += deltaDistY;
+          mapY += stepY;
+          side = 1;
+        }
         range -= 1;
       }
       // Calculate distance projected on camera direction. This is the shortest distance from the point where the wall is
@@ -430,9 +443,16 @@ export class Camera {
       screenX2: number;
       screenYFloor2: number;
       screenYCeiling2: number;
+      screenXHalf: number;
+      screenYFloorHalf: number;
+      screenYCeilingHalf: number;
       key: string;
       x: number;
       y: number;
+      transformX1: number;
+      transformX2: number;
+      transformY1: number;
+      transformY2: number;
     }[] = [];
     // for each coordinate that we see on screen
     for (let coordItem of coordValues) {
@@ -442,10 +462,31 @@ export class Camera {
           screenYFloor: screenYFloor1,
           screenYCeiling: screenYCeiling1,
           distance: x1Distance,
-
           transformX: transformX1,
           transformY: transformY1,
         } = this.translateCoordinateToCamera(player, [wall[0], wall[1]]);
+        // const {
+        //   screenX: screenXQuarter1,
+        //   screenYFloor: screenYFloorQuarter1,
+        //   screenYCeiling: screenYCeilingQuarter1,
+        //   distance: xQuarter1Distance,
+        //   transformX: transformXQuarter1,
+        //   transformY: transformYQuarter1,
+        // } = this.translateCoordinateToCamera(player, [
+        //   (wall[0] + wall[2]) / 4,
+        //   (wall[1] + wall[3]) / 4,
+        // ]);
+        const {
+          screenX: screenXHalf,
+          screenYFloor: screenYFloorHalf,
+          screenYCeiling: screenYCeilingHalf,
+          distance: xHalfDistance,
+          transformX: transformXHalf,
+          transformY: transformYHalf,
+        } = this.translateCoordinateToCamera(player, [
+          (wall[0] + wall[2]) / 2,
+          (wall[1] + wall[3]) / 2,
+        ]);
         const {
           screenX: screenX2,
           screenYFloor: screenYFloor2,
@@ -466,6 +507,9 @@ export class Camera {
           screenX2,
           screenYFloor2,
           screenYCeiling2,
+          screenXHalf,
+          screenYFloorHalf,
+          screenYCeilingHalf,
           key,
           transformX1: transformX1,
           transformY1: transformY1,
@@ -482,6 +526,7 @@ export class Camera {
     for (let square of sortedSquares) {
       idx += 1;
       this.ctx.save();
+      // 1st half
       drawArbitraryQuadImage(
         this.ctx,
         this.map.wallTexture.image as CanvasImageSource,
@@ -495,6 +540,20 @@ export class Camera {
         FILL_METHOD.BILINEAR,
         4
       );
+      // // 2nd half
+      // drawArbitraryQuadImage(
+      //   this.ctx,
+      //   this.map.wallTexture.image as CanvasImageSource,
+      //   wallSrcPointsHalf,
+      //   [
+      //     { x: square.screenX2, y: square.screenYCeiling2 },
+      //     { x: square.screenX2, y: square.screenYFloor2 },
+      //     { x: square.screenXHalf, y: square.screenYFloorHalf },
+      //     { x: square.screenXHalf, y: square.screenYCeilingHalf },
+      //   ],
+      //   FILL_METHOD.BILINEAR,
+      //   4
+      // );
       this.ctx.restore();
 
       // handle brightness
@@ -579,6 +638,11 @@ export class Camera {
         square.screenX1,
         this.height / 2 + 90
       );
+      this.ctx.fillText(
+        `key: ${square.key}`,
+        square.screenX1,
+        this.height / 2 + 110
+      );
       this.ctx.restore();
     }
   }
@@ -624,7 +688,12 @@ export class Camera {
         const { screenX, screenYCeiling, screenYFloor, distance } =
           this.translateCoordinateToCamera(player, point);
 
-        if (distance > 0 && screenX >= 0 && screenX <= width && distance < 10) {
+        if (
+          distance >= 0 &&
+          screenX >= 0 &&
+          screenX <= width &&
+          distance < 10
+        ) {
           dst = Math.abs(distance);
           numOnScreen++;
         }
@@ -638,6 +707,7 @@ export class Camera {
       let tesselation = 9 - dst * 2;
       if (tesselation <= 1) tesselation = 1;
       if (tesselation >= 7) tesselation = 7;
+      tesselation = 1;
       if (numOnScreen >= 1) {
         const alpha = (dst + 0) / this.lightRange - map.light;
         // ensure walls are always at least a little bit visible - alpha 1 is all black
@@ -679,6 +749,22 @@ export class Camera {
         this.ctx.lineTo(floorScreenPoints[1].x, floorScreenPoints[1].y);
         this.ctx.lineTo(floorScreenPoints[2].x, floorScreenPoints[2].y);
         this.ctx.lineTo(floorScreenPoints[3].x, floorScreenPoints[3].y);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = `rgb(255, 0, 0)`;
+        this.ctx.beginPath();
+        this.ctx.moveTo(floorScreenPoints[0].x, floorScreenPoints[0].y);
+        this.ctx.lineTo(floorScreenPoints[1].x, floorScreenPoints[1].y);
+        this.ctx.lineTo(floorScreenPoints[2].x, floorScreenPoints[2].y);
+        this.ctx.lineTo(floorScreenPoints[3].x, floorScreenPoints[3].y);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = `rgb(255, 255, 0)`;
+        this.ctx.beginPath();
+        this.ctx.moveTo(ceilingScreenPoints[0].x, ceilingScreenPoints[0].y);
+        this.ctx.lineTo(ceilingScreenPoints[1].x, ceilingScreenPoints[1].y);
+        this.ctx.lineTo(ceilingScreenPoints[2].x, ceilingScreenPoints[2].y);
+        this.ctx.lineTo(ceilingScreenPoints[3].x, ceilingScreenPoints[3].y);
         this.ctx.fill();
 
         this.ctx.restore();
@@ -786,7 +872,8 @@ export class Camera {
       ZBuffer[column] = perpWallDist; //perpendicular distance is used
 
       // Calculate height of line to draw on screen
-      let lineHeight: number = this.height / perpWallDist;
+      let lineHeight: number =
+        this.height / player.position.planeYInitial / perpWallDist;
 
       // calculate lowest and highest pixel to fill in current stripe
       let drawStartY =
@@ -993,7 +1080,7 @@ export class Camera {
     );
     this.drawCeilingFloor(coords, player, map);
     let ZBuffer = this.drawWalls(player, map);
-    // this.drawWallNew(coords, player, map);
+    this.drawWallNew(coords, player, map);
     this.drawSprites(sprites, player, map, ZBuffer);
 
     this.ctx.restore();
