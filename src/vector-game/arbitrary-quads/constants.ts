@@ -1,4 +1,4 @@
-export const SEAM_OVERLAP = 0.03; //3; // hides the seam artifacts - range(0.0, 0.1)
+export const SEAM_OVERLAP = 0.1; //3; // hides the seam artifacts - range(0.0, 0.1)
 
 export const FILL_METHOD = {
   BILINEAR: "bilinear",
