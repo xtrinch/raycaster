@@ -1271,9 +1271,9 @@ export class Camera {
       player,
       map
     );
-    // this.drawCeilingFloorTexture(coords, player, map);
+    this.drawCeilingFloorTexture(coords, player, map);
     // this.drawCeilingFloorNoTexture(coords, player, map);
-    await this.drawCeilingFloorRaycast(player, map);
+    // await this.drawCeilingFloorRaycast(player, map);
 
     let ZBuffer = this.drawWallsRaycast(player, map);
     // this.drawWallQuad(coords, player, map);
