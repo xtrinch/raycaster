@@ -69,7 +69,26 @@ export class Camera {
     this.skipCounter = this.initialSkipCounter;
     this.map = map;
     this.originalCanvas = canvas;
+    this.intializeTexture(this.map.floorTexture, "floorData");
+    this.intializeTexture(this.map.ceilingTexture, "ceilingData");
     makeAutoObservable(this);
+  }
+
+  intializeTexture(texture: Bitmap, key: string) {
+    const img = texture.image;
+    const canvas = document.createElement("canvas") as HTMLCanvasElement;
+    this.context = canvas.getContext("2d");
+    canvas.width = texture.width * 2;
+    canvas.height = texture.height * 2;
+    texture.image.onload = () => {
+      this.context.drawImage(img, 0, 0, texture.width, texture.height);
+      this[key] = this.context.getImageData(
+        0,
+        0,
+        texture.width,
+        texture.height
+      )?.data;
+    };
   }
 
   render(player: Player, map: GridMap, spriteMap: SpriteMap) {
@@ -117,40 +136,16 @@ export class Camera {
     transformX: number;
     transformY: number;
   } {
-    const distX = 0; //player.position.dirX;
-    const distY = 0; //player.position.dirY;
-    // console.log(`${player.position.dirX} ${player.position.dirY}`);
-    // console.log("VALUES");
-    // console.log(distX);
-    // console.log(distY);
-
     let playerPositionX = player.position.x;
     let playerPositionY = player.position.y;
-    // const playerPositionX = player.position.x - player.position.dirX;
-    // const playerPositionY = player.position.y - player.position.dirY;
     let playerPositionPlaneX = player.position.planeX;
     let playerPositionPlaneY = player.position.planeY;
     let playerPositionDirX = player.position.dirX;
     let playerPositionDirY = player.position.dirY;
 
-    // playerPositionDirX = -playerPositionDirX;
-    // playerPositionDirY = -playerPositionDirY;
-    // playerPositionPlaneX = player.position.planeX / 100;
-    // playerPositionPlaneY = player.position.planeY / 100;
-
     // translate x y position to relative to camera
     let spriteX = point[0] - playerPositionX; //+ player.position.dirX;
     let spriteY = point[1] - playerPositionY; //+ player.position.dirY;
-    // if (isNeg) {
-    //   playerPositionX += playerPositionDirX;
-    //   playerPositionY += playerPositionDirY;
-    //   playerPositionDirY = -playerPositionDirY;
-    //   playerPositionDirX = -playerPositionDirX;
-    //   playerPositionPlaneX = -playerPositionPlaneX;
-    //   playerPositionPlaneY = -playerPositionPlaneY;
-    // }
-    // if (Math.abs(spriteX) < 1) spriteX = 1 * (spriteX / spriteX);
-    // if (Math.abs(spriteY) < 1) spriteY = 1 * (spriteY / spriteY);
 
     // transform sprite with the inverse camera matrix
     // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
@@ -168,20 +163,6 @@ export class Camera {
       invDet *
       (-playerPositionPlaneY * spriteX + playerPositionPlaneX * spriteY); // this is actually the depth inside the screen, that what Z is in 3D
 
-    // if (transformY < 0 && false) {
-    //   if (!isNeg) {
-    //     // transformY = Math.abs(transformY);
-    //     return this.translateCoordinateToCamera(
-    //       player,
-    //       [
-    //         point[0], // + player.position.dirX / 2,
-    //         point[1], // + player.position.dirY / 2,
-    //       ],
-    //       heightMultiplier,
-    //       true
-    //     );
-    //   }
-    // }
     if (transformY < 0.3 && absNegative) {
       transformY = 0.3;
     }
@@ -190,16 +171,7 @@ export class Camera {
     }
 
     let screenX = Math.floor((this.width / 2) * (1 + transformX / transformY));
-    // transformY -= Math.sqrt(
-    //   player.position.dirX ^ (2 + player.position.dirY) ^ 2
-    // );
 
-    // if (transformY < 0) {
-    //   screenX = this.width - screenX;
-    // }
-    // if (screenX > 5000) {
-    //   screenX = 5000;
-    // }
     // to control the pitch / jump
     let vMoveScreen = player.position.pitch + player.position.z;
 
@@ -233,7 +205,6 @@ export class Camera {
   ): { coords: Coords; sprites: Sprite[] } {
     const coords: Coords = {};
     const sprites: Sprite[] = [];
-    let ZBuffer: { [key: number]: number } = {};
 
     // wall casting
     for (let column = 0; column < this.widthResolution; column++) {
@@ -299,15 +270,6 @@ export class Camera {
       let range = this.range;
       while (hit == 0 && range >= 0) {
         // // jump to next map square, either in x-direction, or in y-direction
-        // if (sideDistX < sideDistY) {
-        //   sideDistX += deltaDistX;
-        //   mapX += stepX;
-        //   side = 0;
-        // } else {
-        //   sideDistY += deltaDistY;
-        //   mapY += stepY;
-        //   side = 1;
-        // }
 
         const xCoord = Math.floor(mapX);
         const yCoord = Math.floor(mapY);
@@ -340,7 +302,6 @@ export class Camera {
           hasCeilingFloor: hasCeilingFloor,
         };
         if (hit) {
-          // if (range == this.range) side == 1 ? (side = 0) : (side = 1);
           // bottom two coords of the side of the wall we're looking at
           let x: number, y: number, x1: number, y1: number;
           let wallSide: "n" | "e" | "w" | "s" = null;
@@ -398,16 +359,7 @@ export class Camera {
           }
           // add the visible square we're seeing
           if (!coords[coordIdx].visibleSquares[wallSide]) {
-            // if (range == this.range) {
-            //   coords[coordIdx].visibleSquares[wallSide] = [
-            //     this.width - x,
-            //     y,
-            //     this.width - x1,
-            //     y1,
-            //   ];
-            // } else {
             coords[coordIdx].visibleSquares[wallSide] = [x, y, x1, y1];
-            // }
           }
         }
 
@@ -436,9 +388,6 @@ export class Camera {
       // else
       //   perpWallDist = (mapY - player.position.y + (1 - stepY) / 2) / rayDirY;
 
-      // SET THE ZBUFFER FOR THE SPRITE CASTING
-      ZBuffer[column] = perpWallDist; //perpendicular distance is used
-
       let texture = map.wallTexture;
 
       // calculate value of wallX
@@ -458,7 +407,7 @@ export class Camera {
     return { coords, sprites };
   }
 
-  drawWallNew(coords: Coords, player: Player, map: GridMap) {
+  drawWallQuad(coords: Coords, player: Player, map: GridMap) {
     const wallSrcPoints = [
       { x: 0, y: 0 },
       { x: 0, y: map.wallTexture.height },
@@ -497,24 +446,10 @@ export class Camera {
           transformX: transformX1,
           transformY: transformY1,
         } = this.translateCoordinateToCamera(player, [wall[0], wall[1]]);
-        // const {
-        //   screenX: screenXQuarter1,
-        //   screenYFloor: screenYFloorQuarter1,
-        //   screenYCeiling: screenYCeilingQuarter1,
-        //   distance: xQuarter1Distance,
-        //   transformX: transformXQuarter1,
-        //   transformY: transformYQuarter1,
-        // } = this.translateCoordinateToCamera(player, [
-        //   (wall[0] + wall[2]) / 4,
-        //   (wall[1] + wall[3]) / 4,
-        // ]);
         const {
           screenX: screenXHalf,
           screenYFloor: screenYFloorHalf,
           screenYCeiling: screenYCeilingHalf,
-          distance: xHalfDistance,
-          transformX: transformXHalf,
-          transformY: transformYHalf,
         } = this.translateCoordinateToCamera(player, [
           (wall[0] + wall[2]) / 2,
           (wall[1] + wall[3]) / 2,
@@ -572,20 +507,7 @@ export class Camera {
         FILL_METHOD.BILINEAR,
         4
       );
-      // // 2nd half
-      // drawArbitraryQuadImage(
-      //   this.ctx,
-      //   this.map.wallTexture.image as CanvasImageSource,
-      //   wallSrcPointsHalf,
-      //   [
-      //     { x: square.screenX2, y: square.screenYCeiling2 },
-      //     { x: square.screenX2, y: square.screenYFloor2 },
-      //     { x: square.screenXHalf, y: square.screenYFloorHalf },
-      //     { x: square.screenXHalf, y: square.screenYCeilingHalf },
-      //   ],
-      //   FILL_METHOD.BILINEAR,
-      //   4
-      // );
+
       this.ctx.restore();
 
       // handle brightness
@@ -597,26 +519,6 @@ export class Camera {
       // brightness = 0;
       this.ctx.fillStyle = `rgba(0, 0, 0, ${1 - brightness / 100})`;
 
-      // if (square.key == "n") {
-      //   this.ctx.fillStyle = `rgba(255, 0, 0, ${square.screenX1 / this.width})`;
-      // }
-      // if (square.key == "s") {
-      //   this.ctx.fillStyle = `rgba(0, 255, 0, ${square.screenX1 / this.width})`;
-      // }
-      // if (square.key == "e") {
-      //   this.ctx.fillStyle = `rgba(0, 0, 255, ${square.screenX1 / this.width})`;
-      // }
-      // if (square.key == "w") {
-      //   this.ctx.fillStyle = `rgba(0, 255, 255, ${
-      //     square.screenX1 / this.width
-      //   })`;
-      // }
-
-      // console.log(parseInt(square.key.split("-")[0]));
-      // console.log(square.x);
-      // this.ctx.fillStyle = `rgba(${(square.y + square.x) * 20}, ${
-      //   255 - (square.y + square.x) * 20
-      // }, ${1 == 0 ? (square.screenX1 / this.width) * 255 : 255}, ${1})`;
       this.ctx.beginPath();
       this.ctx.moveTo(square.screenX2 || 0, square.screenYCeiling2 || 0);
       this.ctx.lineTo(square.screenX2 || 0, square.screenYFloor2 || 0);
@@ -677,6 +579,150 @@ export class Camera {
       );
       this.ctx.restore();
     }
+  }
+
+  // draws columns left to right
+  async drawCeilingFloorRaycast(player: Player, map: GridMap) {
+    if (!this.floorData || !this.ceilingData) {
+      return;
+    }
+
+    const floorTexture = map.floorTexture;
+    const ceilingTexture = map.ceilingTexture;
+    const floorData = this.floorData;
+    const ceilingData = this.ceilingData;
+
+    // floor casting
+    const ceilingFloorImg = new Uint8ClampedArray(
+      this.ceilingWidthResolution * this.ceilingHeightResolution * 4
+    );
+    // black pixels for floor so we can use alpha channel in the actual floor
+    const floorImgBlackPixels = new Uint8ClampedArray(
+      this.ceilingWidthResolution * this.ceilingHeightResolution * 4
+    );
+
+    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
+    let rayDirX0 = player.position.dirX - player.position.planeX;
+    let rayDirY0 = player.position.dirY - player.position.planeY;
+    let rayDirX1 = player.position.dirX + player.position.planeX;
+    let rayDirY1 = player.position.dirY + player.position.planeY;
+
+    const rayDirXDist = rayDirX1 - rayDirX0;
+    const rayDirYDist = rayDirY1 - rayDirY0;
+
+    // Vertical position of the camera.
+    let halfHeight = this.ceilingHeightResolution / 2;
+
+    // since we're drawing a smaller image, we also need to scale the pitch
+    const scale = this.ceilingHeightResolution / this.height;
+    let scaledPitch = player.position.pitch * scale;
+    let scaledZ = player.position.z * scale;
+
+    // loop through the resolutions and scale later
+    for (let y = 0; y < this.ceilingHeightResolution; ++y) {
+      // whether this section is floor or ceiling
+      let isFloor = y > halfHeight + scaledPitch;
+
+      // Current y position compared to the center of the screen (the horizon)
+      let p = isFloor
+        ? y - halfHeight - scaledPitch
+        : halfHeight - y + scaledPitch;
+
+      // Vertical position of the camera.
+      // NOTE: with 0.5, it's exactly in the center between floor and ceiling,
+      // matching also how the walls are being raycasted. For different values
+      // than 0.5, a separate loop must be done for ceiling and floor since
+      // they're no longer symmetrical.
+      let camZ = isFloor ? halfHeight + scaledZ : halfHeight - scaledZ;
+
+      // Horizontal distance from the camera to the floor for the current row.
+      // 0.5 is the z position exactly in the middle between floor and ceiling.
+      // NOTE: this is affine texture mapping, which is not perspective correct
+      // except for perfectly horizontal and vertical surfaces like the floor.
+      // NOTE: this formula is explained as follows: The camera ray goes through
+      // the following two points: the camera itself, which is at a certain
+      // height (posZ), and a point in front of the camera (through an imagined
+      // vertical plane containing the screen pixels) with horizontal distance
+      // 1 from the camera, and vertical position p lower than posZ (posZ - p). When going
+      // through that point, the line has vertically traveled by p units and
+      // horizontally by 1 unit. To hit the floor, it instead needs to travel by
+      // posZ units. It will travel the same ratio horizontally. The ratio was
+      // 1 / p for going through the camera plane, so to go posZ times farther
+      // to reach the floor, we get that the total horizontal distance is posZ / p.
+      let rowDistance = camZ / p;
+
+      let alpha = (rowDistance + 0) / this.lightRange - map.light;
+      alpha = Math.min(alpha, 0.8);
+
+      // calculate the real world step vector we have to add for each x (parallel to camera plane)
+      // adding step by step avoids multiplications with a weight in the inner loop
+      let floorStepX =
+        (rowDistance * rayDirXDist) / this.ceilingWidthResolution;
+      let floorStepY =
+        (rowDistance * rayDirYDist) / this.ceilingWidthResolution;
+
+      // real world coordinates of the leftmost column. This will be updated as we step to the right.
+      let floorX = player.position.x + rowDistance * rayDirX0;
+      let floorY = player.position.y + rowDistance * rayDirY0;
+
+      const rowAlpha = (1 - alpha) * 255;
+      for (let x = 0; x < this.ceilingWidthResolution; ++x) {
+        floorX += floorStepX;
+        floorY += floorStepY;
+
+        // no roof, no draw
+        if (map.get(floorX, floorY) !== 2) continue;
+
+        let cellX = floorX % 1; // the cell coord is simply got from the integer parts of floorX and floorY
+        let cellY = floorY % 1;
+
+        let textureWidth = isFloor ? floorTexture.width : ceilingTexture.width;
+        let textureHeight = isFloor
+          ? floorTexture.height
+          : ceilingTexture.height;
+
+        // get the texture coordinate from the fractional part
+        let tx = Math.floor(textureWidth * cellX);
+        let ty = Math.floor(textureHeight * cellY);
+
+        // find pixel
+        const fullImgIdx = 4 * (ty * textureWidth + tx);
+        const sliceFloor = floorData.slice(fullImgIdx, fullImgIdx + 4);
+        const sliceCeiling = ceilingData.slice(fullImgIdx, fullImgIdx + 4);
+
+        sliceFloor[3] = rowAlpha;
+        sliceCeiling[3] = rowAlpha;
+        const floorImgIdx = 4 * (y * this.ceilingWidthResolution + x);
+
+        if (isFloor) {
+          ceilingFloorImg.set(sliceFloor, floorImgIdx);
+          floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
+        } else {
+          ceilingFloorImg.set(sliceCeiling, floorImgIdx);
+          floorImgBlackPixels.set([0, 0, 0, 255], floorImgIdx);
+        }
+      }
+    }
+
+    // scale image to canvas width/height
+    var img0 = new ImageData(
+      floorImgBlackPixels,
+      this.ceilingWidthResolution,
+      this.ceilingHeightResolution
+    );
+
+    const renderer0 = await createImageBitmap(img0);
+    this.ctx.drawImage(renderer0, 0, 0, this.width, this.height);
+
+    // scale image to canvas width/height
+    var img = new ImageData(
+      ceilingFloorImg,
+      this.ceilingWidthResolution,
+      this.ceilingHeightResolution
+    );
+
+    const renderer = await createImageBitmap(img);
+    this.ctx.drawImage(renderer, 0, 0, this.width, this.height);
   }
 
   // draws columns left to right
@@ -816,29 +862,6 @@ export class Camera {
             [x + xStep0 + xStep1, y + yStep0],
             [x + xStep0 + xStep1, y + yStep0 + yStep1],
             [x + xStep0, y + yStep0 + yStep1],
-            // [x, y],
-            // [x + 1.01, y],
-            // [x + 1.01, y + 1.01],
-            // [x, y + 1.01],
-          ];
-
-          const ceilingSrcPoints = [
-            { x: 0, y: 0 },
-            { x: 0, y: map.ceilingTexture.height * yStep1 },
-            {
-              x: map.ceilingTexture.width * xStep1,
-              y: map.ceilingTexture.height * yStep1,
-            },
-            { x: map.ceilingTexture.width * xStep1, y: 0 },
-          ];
-          const floorSrcPoints = [
-            { x: 0, y: 0 },
-            { x: 0, y: map.floorTexture.height * yStep1 },
-            {
-              x: map.floorTexture.width * xStep1,
-              y: map.floorTexture.height * yStep1,
-            },
-            { x: map.floorTexture.width * xStep1, y: 0 },
           ];
 
           let floorScreenPoints: { x: number; y: number }[] = [];
@@ -876,24 +899,6 @@ export class Camera {
             const brightness = Math.min(
               Math.max(0, Math.floor(100 - alpha * 100), 20)
             );
-            this.ctx.save();
-            // drawArbitraryQuadImage(
-            //   this.ctx,
-            //   this.map.floorTexture.image as CanvasImageSource,
-            //   floorSrcPoints,
-            //   floorScreenPoints,
-            //   FILL_METHOD.BILINEAR,
-            //   tesselation
-            // );
-            // drawArbitraryQuadImage(
-            //   this.ctx,
-            //   this.map.ceilingTexture.image as CanvasImageSource,
-            //   ceilingSrcPoints,
-            //   ceilingScreenPoints,
-            //   FILL_METHOD.BILINEAR,
-            //   tesselation
-            // );
-            this.ctx.restore();
 
             this.ctx.save();
             this.ctx.fillStyle = `rgb(65, 65, 65)`;
@@ -955,7 +960,7 @@ export class Camera {
   }
 
   // draws columns left to right
-  drawWalls(player: Player, map: GridMap): { [key: number]: number } {
+  drawWallsRaycast(player: Player, map: GridMap): { [key: number]: number } {
     let ZBuffer: { [key: number]: number } = {};
     let width = Math.ceil(this.widthSpacing);
 
@@ -1258,7 +1263,7 @@ export class Camera {
   }
 
   // draws columns left to right
-  drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
+  async drawColumns(player: Player, map: GridMap, spriteMap: SpriteMap) {
     this.ctx.save();
 
     const { coords, sprites } = this.raycastVisibleCoordinates(
@@ -1266,9 +1271,12 @@ export class Camera {
       player,
       map
     );
-    this.drawCeilingFloorTexture(coords, player, map);
-    let ZBuffer = this.drawWalls(player, map);
-    // this.drawWallNew(coords, player, map);
+    // this.drawCeilingFloorTexture(coords, player, map);
+    // this.drawCeilingFloorNoTexture(coords, player, map);
+    await this.drawCeilingFloorRaycast(player, map);
+
+    let ZBuffer = this.drawWallsRaycast(player, map);
+    // this.drawWallQuad(coords, player, map);
     this.drawSprites(sprites, player, map, ZBuffer);
 
     this.ctx.restore();
